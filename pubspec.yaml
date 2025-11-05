@@ -1,0 +1,55 @@
+name: swachhata_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
+  # Firebase
+  firebase_core: ^3.5.0
+  cloud_firestore: ^5.4.4
+  firebase_auth: ^5.3.1
+  firebase_storage: ^12.2.2
+  firebase_messaging: ^15.1.2
+
+  # State management & utilities
+  provider: ^6.1.2
+  uuid: ^4.5.1
+  http: ^1.5.0
+  path_provider: ^2.1.5
+
+  # UI and UX
+  cupertino_icons: ^1.0.8
+  carousel_slider: ^5.1.1
+  table_calendar: ^3.2.0
+
+  # Maps and location
+  google_maps_flutter: ^2.6.0
+  geocoding: ^4.0.0
+  location: ^8.0.1
+
+  # Media and documents
+  image_picker: ^1.1.1
+  pdf: ^3.11.3
+  printing: ^5.14.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true  # ✅ Required for localization & codegen
+
+flutter_intl:
+  enabled: true

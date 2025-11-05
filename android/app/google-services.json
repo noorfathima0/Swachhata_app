@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "927432211791",
+    "project_id": "swachhata-app1",
+    "storage_bucket": "swachhata-app1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:927432211791:android:3f5754e6fdb66893ff193a",
+        "android_client_info": {
+          "package_name": "com.example.swachhata_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "927432211791-72sehf65st0eo80uj3kqvp4qkhkf312r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgV917TLKEk650eLMlSVaSyisYaRPuhuA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "927432211791-72sehf65st0eo80uj3kqvp4qkhkf312r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "927432211791-ffcpuf2bcjc937jtjht0la8770crs9vb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.swachhataApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
