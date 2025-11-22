@@ -5,50 +5,53 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/complaint_service.dart';
 import 'complaint_detail.dart';
 import 'package:intl/intl.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 
 class ComplaintList extends StatelessWidget {
   const ComplaintList({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     final user = Provider.of<AuthProvider>(context).currentUser;
     final complaintService = ComplaintService();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Complaints"),
+        title: Text(loc.myComplaints),
         centerTitle: true,
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
       ),
       body: user == null
-          ? const Center(
+          ? Center(
               child: Text(
-                "Please log in to view complaints.",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                // "Please log in to view complaints." -> localized as "<Login> to view complaints."
+                "${loc.login} ${loc.noData}", // fallback friendly message
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
             )
           : StreamBuilder<QuerySnapshot>(
               stream: complaintService.getUserComplaints(user.uid),
               builder: (context, snapshot) {
-                // 🔹 Show loading spinner while fetching data
+                // Loading spinner while fetching data
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
+                  return Center(
                     child: CircularProgressIndicator(color: Colors.teal),
                   );
                 }
 
-                // 🔹 Show error message if something went wrong
+                // Error state
                 if (snapshot.hasError) {
                   return Center(
                     child: Text(
-                      "Error: ${snapshot.error}",
+                      "${loc.error}: ${snapshot.error}",
                       style: TextStyle(fontSize: 16, color: Colors.red[700]),
                     ),
                   );
                 }
 
-                // 🔹 If no complaints yet
+                // No complaints
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return Center(
                     child: Column(
@@ -60,16 +63,19 @@ class ComplaintList extends StatelessWidget {
                           color: Colors.teal[300],
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          "No complaints submitted yet.",
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        Text(
+                          loc.noComplaints,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
                   );
                 }
 
-                // 🔹 Extract and display complaint data
+                // Extract and display complaint data
                 final complaints = snapshot.data!.docs;
 
                 return ListView.builder(
@@ -83,7 +89,11 @@ class ComplaintList extends StatelessWidget {
                         ? DateFormat(
                             'dd MMM yyyy, hh:mm a',
                           ).format(timestamp.toDate())
-                        : 'Unknown date';
+                        : loc.noData;
+
+                    final rawStatus = (data['status'] ?? '').toString();
+                    final localizedStatus = _localizedStatus(rawStatus, loc);
+                    final statusColor = _getStatusColor(rawStatus);
 
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -120,7 +130,7 @@ class ComplaintList extends StatelessWidget {
                           ),
                         ),
                         title: Text(
-                          data['type'] ?? 'Unknown Type',
+                          data['type'] ?? loc.noData,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -131,34 +141,29 @@ class ComplaintList extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
+                              margin: const EdgeInsets.only(top: 6),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 2,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: _getStatusColor(
-                                  data['status'] ?? 'Unknown',
-                                ).withOpacity(0.1),
+                                color: statusColor.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: _getStatusColor(
-                                    data['status'] ?? 'Unknown',
-                                  ).withOpacity(0.3),
+                                  color: statusColor.withOpacity(0.3),
                                   width: 1,
                                 ),
                               ),
                               child: Text(
-                                "Status: ${data['status'] ?? 'Unknown'}",
+                                "${loc.complaintStatus}: $localizedStatus",
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  color: _getStatusColor(
-                                    data['status'] ?? 'Unknown',
-                                  ),
+                                  color: statusColor,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
                             Text(
                               formattedDate,
                               style: TextStyle(
@@ -194,18 +199,29 @@ class ComplaintList extends StatelessWidget {
     );
   }
 
+  // Map raw stored status to localized friendly text
+  String _localizedStatus(String rawStatus, AppLocalizations loc) {
+    final s = rawStatus.toLowerCase();
+    if (s.contains('resolved')) return loc.complaintResolved;
+    if (s.contains('rejected')) return loc.complaintRejected;
+    if (s.contains('pending') || s.contains('submitted'))
+      return loc.complaintPending;
+    // if contains progress or "in-progress"
+    if (s.contains('progress') || s.contains('in-progress'))
+      return loc.complaintPending;
+    // fallback to raw status if no matching localization key
+    return rawStatus.isNotEmpty ? rawStatus : loc.noData;
+  }
+
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'resolved':
-        return Colors.green;
-      case 'in progress':
-        return Colors.orange;
-      case 'pending':
-        return Colors.blue;
-      case 'rejected':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+    final s = status.toLowerCase();
+    if (s.contains('resolved')) return Colors.green;
+    if (s.contains('in progress') ||
+        s.contains('progress') ||
+        s.contains('submitted') ||
+        s.contains('pending'))
+      return Colors.orange;
+    if (s.contains('rejected')) return Colors.red;
+    return Colors.grey;
   }
 }

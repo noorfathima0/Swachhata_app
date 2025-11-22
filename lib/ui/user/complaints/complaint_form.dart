@@ -4,9 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+
+import 'package:swachhata_app/l10n/app_localizations.dart';
 import '../../../services/complaint_service.dart';
 import '../../../services/location_service.dart';
-import '../../../providers/auth_provider.dart';
 
 class ComplaintForm extends StatefulWidget {
   const ComplaintForm({super.key});
@@ -20,125 +21,80 @@ class _ComplaintFormState extends State<ComplaintForm> {
   final _descController = TextEditingController();
   final _addressController = TextEditingController();
 
-  String _selectedType = 'Garbage';
+  String? _selectedType;
   File? _image;
   bool _loading = false;
 
   LatLng? _currentPosition;
   GoogleMapController? _mapController;
-  String? _selectedAddress;
 
-  final _types = ['Garbage', 'Drainage', 'Streetlight', 'Road Damage', 'Other'];
-
-  // Color scheme
+  // ✅ Colors
   final Color _primaryColor = Colors.teal;
   final Color _primaryDark = Color(0xFF00695C);
   final Color _primaryLight = Color(0xFF4DB6AC);
-  final Color _accentColor = Colors.tealAccent;
-  final Color _backgroundColor = Colors.white;
-  final Color _cardColor = Color(0xFFF5F5F5);
 
-  // ✅ Pick image from camera or gallery
+  // ✅ Pick image
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source, imageQuality: 70);
-    if (pickedFile != null) {
-      setState(() => _image = File(pickedFile.path));
-    }
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 70,
+    );
+    if (picked != null) setState(() => _image = File(picked.path));
   }
 
-  // ✅ Get current location + address
+  // ✅ Fetch current location and reverse geocode
   Future<void> _getLocation() async {
+    final locService = LocationService();
     try {
-      final locationService = LocationService();
-      final loc = await locationService.getCurrentLocation();
+      final loc = await locService.getCurrentLocation();
 
-      final latitude = loc['latitude']!;
-      final longitude = loc['longitude']!;
-
-      // 🔹 Reverse geocode to get readable address
-      final placemarks = await placemarkFromCoordinates(latitude, longitude);
-      String address = "Unknown location";
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        address =
-            "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-      }
-
-      setState(() {
-        _currentPosition = LatLng(latitude, longitude);
-        _selectedAddress = address;
-        _addressController.text = address;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error fetching location: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  // ✅ On map tap – update coordinates and reverse geocode again
-  void _onMapTap(LatLng position) async {
-    try {
       final placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
+        loc["latitude"]!,
+        loc["longitude"]!,
       );
-      String address = "Unknown location";
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        address =
-            "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-      }
+      final place = placemarks.first;
+      String address =
+          "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
 
       setState(() {
-        _currentPosition = position;
-        _selectedAddress = address;
+        _currentPosition = LatLng(loc["latitude"]!, loc["longitude"]!);
         _addressController.text = address;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error fetching tapped location: $e"),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text("${AppLocalizations.of(context)!.error}: $e")),
       );
     }
   }
 
   // ✅ Submit complaint
   Future<void> _submitComplaint() async {
+    final loc = AppLocalizations.of(context)!;
+
     if (!_formKey.currentState!.validate() ||
         _image == null ||
         _currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Please fill all fields and select image/location"),
-          backgroundColor: Colors.orange,
-        ),
+        SnackBar(content: Text(loc.error), backgroundColor: Colors.orange),
       );
       return;
     }
 
     setState(() => _loading = true);
+
     try {
       final service = ComplaintService();
       await service.submitComplaint(
-        type: _selectedType,
+        type: _selectedType!,
         description: _descController.text.trim(),
         image: _image!,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
         address: _addressController.text.trim(),
       );
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Complaint Submitted Successfully ✅"),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text(loc.success), backgroundColor: Colors.green),
       );
       Navigator.pop(context);
     } catch (e) {
@@ -157,405 +113,260 @@ class _ComplaintFormState extends State<ComplaintForm> {
   }
 
   @override
-  void dispose() {
-    _descController.dispose();
-    _addressController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
+    // ✅ Localized complaint types
+    final types = [
+      loc.complaintTypeGarbage,
+      loc.complaintTypeDrainage,
+      loc.complaintTypeStreetlight,
+      loc.complaintTypeRoadDamage,
+      loc.complaintTypeOther,
+    ];
+
+    _selectedType ??= types.first;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Report an Issue",
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        title: Text(
+          loc.addComplaint,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: _primaryColor,
-        elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
       ),
-      body: Container(
-        color: _backgroundColor,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Complaint Type Section
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Complaint Type",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: _primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: _selectedType,
-                          items: _types
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(
-                                    t,
-                                    style: TextStyle(color: Colors.grey[800]),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) => setState(() => _selectedType = v!),
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: _primaryLight),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: _primaryColor),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          dropdownColor: Colors.white,
-                          style: TextStyle(color: Colors.grey[800]),
-                        ),
-                      ],
-                    ),
-                  ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ✅ Complaint Type
+              _sectionCard(
+                title: loc.complaintType,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedType,
+                  items: types
+                      .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedType = v),
+                  decoration: _inputDecoration(loc.complaintType),
                 ),
-                const SizedBox(height: 20),
+              ),
+              const SizedBox(height: 16),
 
-                // Description Section
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Description",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: _primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _descController,
-                          decoration: InputDecoration(
-                            labelText: "Describe the issue...",
-                            labelStyle: TextStyle(color: Colors.grey[600]),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: _primaryLight),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: _primaryColor),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          maxLines: 3,
-                          validator: (v) => v == null || v.isEmpty
-                              ? "Please enter description"
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
+              // ✅ Description
+              _sectionCard(
+                title: loc.complaintDescription,
+                child: TextFormField(
+                  controller: _descController,
+                  maxLines: 3,
+                  decoration: _inputDecoration(loc.enterDescription),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? loc.enterDescription : null,
                 ),
-                const SizedBox(height: 20),
+              ),
+              const SizedBox(height: 16),
 
-                // Image Section
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              // ✅ Image Upload
+              _sectionCard(
+                title: loc.addPhoto,
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          "Add Photo Evidence",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: _primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () => _pickImage(ImageSource.camera),
-                                icon: Icon(Icons.camera_alt, size: 20),
-                                label: const Text("Camera"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _primaryColor,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () =>
-                                    _pickImage(ImageSource.gallery),
-                                icon: Icon(Icons.photo_library, size: 20),
-                                label: const Text("Gallery"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: _primaryColor,
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    side: BorderSide(color: _primaryColor),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        if (_image != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              children: [
-                                Image.file(
-                                  _image!,
-                                  height: 180,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: IconButton(
-                                      icon: Icon(
-                                        Icons.close,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                      onPressed: () =>
-                                          setState(() => _image = null),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Location Section
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Select Location",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: _primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Map
-                        if (_currentPosition != null)
-                          Container(
-                            height: 250,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _primaryLight,
-                                width: 1,
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: GoogleMap(
-                                initialCameraPosition: CameraPosition(
-                                  target: _currentPosition!,
-                                  zoom: 16,
-                                ),
-                                onMapCreated: (controller) =>
-                                    _mapController = controller,
-                                markers: {
-                                  Marker(
-                                    markerId: const MarkerId("selected"),
-                                    position: _currentPosition!,
-                                    icon: BitmapDescriptor.defaultMarkerWithHue(
-                                      BitmapDescriptor.hueAzure,
-                                    ),
-                                  ),
-                                },
-                                onTap: _onMapTap,
-                                myLocationEnabled: true,
-                                myLocationButtonEnabled: false,
-                              ),
-                            ),
-                          )
-                        else
-                          SizedBox(
-                            height: 120,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(
-                                    color: _primaryColor,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    "Fetching your location...",
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
+                        Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _getLocation,
-                            icon: Icon(Icons.my_location, size: 20),
-                            label: const Text("Use Current Location"),
+                            onPressed: () => _pickImage(ImageSource.camera),
+                            icon: const Icon(Icons.camera_alt),
+                            label: Text(loc.camera),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryLight,
+                              backgroundColor: _primaryColor,
                               foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
                             ),
                           ),
                         ),
-
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _addressController,
-                          decoration: InputDecoration(
-                            labelText: "Address",
-                            labelStyle: TextStyle(color: Colors.grey[600]),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: _primaryLight),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: _primaryColor),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            prefixIcon: Icon(
-                              Icons.location_on,
-                              color: _primaryColor,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickImage(ImageSource.gallery),
+                            icon: const Icon(Icons.photo_library),
+                            label: Text(loc.gallery),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: _primaryColor),
+                              foregroundColor: _primaryColor,
                             ),
                           ),
-                          validator: (v) => v == null || v.isEmpty
-                              ? "Please enter address"
-                              : null,
                         ),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 30),
 
-                // Submit Button
-                _loading
-                    ? Center(
-                        child: Column(
-                          children: [
-                            CircularProgressIndicator(color: _primaryColor),
-                            const SizedBox(height: 16),
-                            Text(
-                              "Submitting your complaint...",
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
+                    if (_image != null) ...[
+                      const SizedBox(height: 12),
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              _image!,
+                              width: double.infinity,
+                              height: 180,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () => setState(() => _image = null),
                               ),
                             ),
-                          ],
-                        ),
-                      )
-                    : SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton.icon(
-                          onPressed: _submitComplaint,
-                          icon: Icon(Icons.send, size: 24),
-                          label: const Text(
-                            "Submit Complaint",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ✅ Location Section
+              _sectionCard(
+                title: loc.selectLocation,
+                child: Column(
+                  children: [
+                    _currentPosition == null
+                        ? Column(
+                            children: [
+                              CircularProgressIndicator(color: _primaryColor),
+                              const SizedBox(height: 8),
+                              Text(loc.loading),
+                            ],
+                          )
+                        : SizedBox(
+                            height: 250,
+                            child: GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: _currentPosition!,
+                                zoom: 16,
+                              ),
+                              markers: {
+                                Marker(
+                                  markerId: const MarkerId("selected"),
+                                  position: _currentPosition!,
+                                ),
+                              },
+                              onTap: (pos) async {
+                                final placemarks =
+                                    await placemarkFromCoordinates(
+                                      pos.latitude,
+                                      pos.longitude,
+                                    );
+                                final p = placemarks.first;
+                                final address =
+                                    "${p.street}, ${p.locality}, ${p.administrativeArea}, ${p.country}";
+                                setState(() {
+                                  _currentPosition = pos;
+                                  _addressController.text = address;
+                                });
+                              },
                             ),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                            shadowColor: _primaryColor.withOpacity(0.3),
-                          ),
+
+                    const SizedBox(height: 12),
+
+                    ElevatedButton.icon(
+                      onPressed: _getLocation,
+                      icon: const Icon(Icons.my_location),
+                      label: Text(loc.useCurrentLocation),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryLight,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    TextFormField(
+                      controller: _addressController,
+                      decoration: _inputDecoration(loc.address),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? loc.enterAddress : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Submit Button
+              _loading
+                  ? Column(
+                      children: [
+                        CircularProgressIndicator(color: _primaryColor),
+                        const SizedBox(height: 12),
+                        Text(loc.loading),
+                      ],
+                    )
+                  : SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _submitComplaint,
+                        icon: const Icon(Icons.send),
+                        label: Text(loc.submit),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
-                const SizedBox(height: 20),
-              ],
-            ),
+                    ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  // ✅ Reusable card widget
+  Widget _sectionCard({required String title, required Widget child}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: _primaryDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ Input decoration (with localization)
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }

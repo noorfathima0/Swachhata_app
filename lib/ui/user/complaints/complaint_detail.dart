@@ -2,13 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 
 class ComplaintDetail extends StatelessWidget {
   final QueryDocumentSnapshot data;
 
   const ComplaintDetail({super.key, required this.data});
 
-  void _showFullImageDialog(BuildContext context, String imageUrl) {
+  void _showFullImageDialog(
+    BuildContext context,
+    String imageUrl,
+    String failedLabel,
+  ) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -46,7 +51,7 @@ class ComplaintDetail extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Failed to load image',
+                          failedLabel,
                           style: TextStyle(
                             color: Colors.teal[700],
                             fontSize: 16,
@@ -80,32 +85,46 @@ class ComplaintDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     final complaint = data.data() as Map<String, dynamic>;
 
     final imageUrl = complaint['imageUrl'] ?? '';
-    final type = complaint['type'] ?? 'Unknown';
-    final description = complaint['description'] ?? 'No description available';
-    final status = complaint['status'] ?? 'Pending';
-    final latitude = complaint['latitude'] ?? 0.0;
-    final longitude = complaint['longitude'] ?? 0.0;
-    final address = complaint['address'] ?? 'Address not available';
+    final type = complaint['type'] ?? loc.unknown;
+    final description = complaint['description'] ?? loc.noDescription;
+    final statusRaw = complaint['status'] ?? 'Pending';
+    final latitude = (complaint['latitude'] ?? 0.0).toDouble();
+    final longitude = (complaint['longitude'] ?? 0.0).toDouble();
+    final address = complaint['address'] ?? loc.addressNotAvailable;
     final createdAt = complaint['createdAt'] as Timestamp?;
     final formattedDate = createdAt != null
         ? DateFormat('dd MMM yyyy, hh:mm a').format(createdAt.toDate())
-        : 'Unknown date';
+        : loc.unknownDate;
+
+    // localized status label
+    String localizedStatus() {
+      final s = statusRaw.toString().toLowerCase();
+      if (s.contains('resolved')) return loc.complaintResolved;
+      if (s.contains('rejected')) return loc.complaintRejected;
+      if (s.contains('progress') || s.contains('in-progress'))
+        return loc.complaintInProgress;
+      if (s.contains('submitted') || s.contains('pending'))
+        return loc.complaintPending;
+      return statusRaw.toString();
+    }
 
     Color _getStatusColor(String status) {
-      switch (status.toLowerCase()) {
-        case 'resolved':
-          return Colors.green;
-        case 'in progress':
-          return Colors.orange;
-        case 'pending':
-          return Colors.blue;
-        default:
-          return Colors.teal;
-      }
+      final s = status.toLowerCase();
+      if (s.contains('resolved')) return Colors.green;
+      if (s.contains('in progress') ||
+          s.contains('progress') ||
+          s.contains('in-progress'))
+        return Colors.orange;
+      if (s.contains('pending') || s.contains('submitted')) return Colors.blue;
+      if (s.contains('rejected')) return Colors.red;
+      return Colors.teal;
     }
+
+    final statusColor = _getStatusColor(statusRaw.toString());
 
     return Scaffold(
       appBar: AppBar(
@@ -119,7 +138,7 @@ class ComplaintDetail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🖼️ Complaint Image - Now Clickable
+            // Image card (tappable)
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -147,7 +166,7 @@ class ComplaintDetail extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Image not available',
+                              loc.imageNotAvailable,
                               style: TextStyle(
                                 color: Colors.teal[700],
                                 fontSize: 16,
@@ -161,7 +180,11 @@ class ComplaintDetail extends StatelessWidget {
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () => _showFullImageDialog(context, imageUrl),
+                          onTap: () => _showFullImageDialog(
+                            context,
+                            imageUrl,
+                            loc.failedToLoadImage,
+                          ),
                           child: Container(
                             alignment: Alignment.center,
                             child: Icon(
@@ -179,7 +202,7 @@ class ComplaintDetail extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // 🏷️ Type and Status
+            // Type & Status
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -188,7 +211,6 @@ class ComplaintDetail extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Column(
@@ -203,7 +225,7 @@ class ComplaintDetail extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                "Complaint Type",
+                                loc.complaintType,
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.teal[600],
@@ -230,28 +252,21 @@ class ComplaintDetail extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(status).withOpacity(0.1),
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _getStatusColor(status),
-                          width: 1,
-                        ),
+                        border: Border.all(color: statusColor, width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.circle,
-                            size: 8,
-                            color: _getStatusColor(status),
-                          ),
+                          Icon(Icons.circle, size: 8, color: statusColor),
                           const SizedBox(width: 6),
                           Text(
-                            status,
+                            localizedStatus(),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: _getStatusColor(status),
+                              color: statusColor,
                             ),
                           ),
                         ],
@@ -263,7 +278,7 @@ class ComplaintDetail extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 🕒 Submission Date
+            // Submitted on
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -280,7 +295,7 @@ class ComplaintDetail extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Submitted on",
+                            loc.submittedOn,
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.teal[600],
@@ -305,7 +320,7 @@ class ComplaintDetail extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 📝 Description
+            // Description
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -325,7 +340,7 @@ class ComplaintDetail extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          "Description",
+                          loc.description,
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.teal[700],
@@ -349,7 +364,7 @@ class ComplaintDetail extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 📍 Address
+            // Address
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -369,7 +384,7 @@ class ComplaintDetail extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          "Address",
+                          loc.addressLabel,
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.teal[700],
@@ -402,7 +417,7 @@ class ComplaintDetail extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 🗺️ Map View
+            // Map view
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -418,7 +433,7 @@ class ComplaintDetail extends StatelessWidget {
                         Icon(Icons.map, color: Colors.teal[600], size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          "Location on Map",
+                          loc.locationOnMap,
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.teal[700],

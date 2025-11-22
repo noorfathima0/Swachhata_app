@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../../services/location_service.dart';
 import '../../../services/imgbb_service.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 
 class ActivityFormPage extends StatefulWidget {
   const ActivityFormPage({super.key});
@@ -44,9 +45,10 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
     if (pickedFiles.isNotEmpty) {
       final newFiles = pickedFiles.map((e) => File(e.path)).toList();
       if (_selectedImages.length + newFiles.length > 5) {
+        final loc = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("You can upload up to 5 images only."),
+            content: Text(loc.maxFiveImages),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
           ),
@@ -76,14 +78,18 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
 
   // 📍 Use current location
   Future<void> _useCurrentLocation() async {
+    final loc = AppLocalizations.of(context)!;
     try {
-      final loc = await _locationService.getCurrentLocation();
-      final lat = loc['latitude']!;
-      final lng = loc['longitude']!;
+      final location = await _locationService.getCurrentLocation();
+      final lat = location['latitude']!;
+      final lng = location['longitude']!;
 
       final placemarks = await placemarkFromCoordinates(lat, lng);
-      final place = placemarks.first;
-      final address = _formatFullAddress(place);
+      String address = loc.unknownLocation;
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        address = _formatFullAddress(place);
+      }
 
       setState(() {
         _selectedLatLng = LatLng(lat, lng);
@@ -94,9 +100,10 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
         CameraUpdate.newLatLngZoom(_selectedLatLng!, 15),
       );
     } catch (e) {
+      final loc = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Failed to get location: $e"),
+          content: Text('${loc.failedToGetLocation}: $e'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -106,24 +113,39 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
 
   // 📍 Handle map tap to select location
   Future<void> _onMapTap(LatLng position) async {
-    setState(() {
-      _selectedLatLng = position;
-    });
+    final loc = AppLocalizations.of(context)!;
+    try {
+      setState(() {
+        _selectedLatLng = position;
+      });
 
-    final placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
-    final place = placemarks.first;
-    final address = _formatFullAddress(place);
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      String address = loc.unknownLocation;
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        address = _formatFullAddress(place);
+      }
 
-    setState(() {
-      _locationController.text = address;
-    });
+      setState(() {
+        _locationController.text = address;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${loc.failedToGetLocation}: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // 📝 Submit activity
   Future<void> _submitActivity() async {
+    final loc = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -131,7 +153,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
     if (_selectedLatLng == null || _locationController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Please select a location on the map."),
+          content: Text(loc.selectLocationOnMap),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
@@ -152,7 +174,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Image upload failed: $e"),
+            content: Text('${loc.imageUploadFailed}: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -185,7 +207,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Activity submitted successfully!"),
+        content: Text(loc.activitySubmitted),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
       ),
@@ -196,12 +218,14 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          "Submit Activity",
-          style: TextStyle(
+        title: Text(
+          loc.submitActivity,
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.white,
             fontSize: 20,
@@ -210,7 +234,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
         centerTitle: true,
         backgroundColor: _primaryColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -231,7 +255,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Activity Title",
+                        loc.activityTitle,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -242,7 +266,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                       TextFormField(
                         controller: _titleController,
                         decoration: InputDecoration(
-                          hintText: "Enter activity title...",
+                          hintText: loc.enterActivityTitle,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(color: _primaryLight),
@@ -255,7 +279,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                           fillColor: Colors.white,
                         ),
                         validator: (v) =>
-                            v!.isEmpty ? "Please enter a title" : null,
+                            v!.isEmpty ? loc.enterTitleValidation : null,
                       ),
                     ],
                   ),
@@ -275,7 +299,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Description",
+                        loc.description,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -287,7 +311,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                         controller: _descController,
                         maxLines: 4,
                         decoration: InputDecoration(
-                          hintText: "Describe your activity...",
+                          hintText: loc.describeActivity,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(color: _primaryLight),
@@ -300,7 +324,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                           fillColor: Colors.white,
                         ),
                         validator: (v) =>
-                            v!.isEmpty ? "Please enter a description" : null,
+                            v!.isEmpty ? loc.enterDescriptionValidation : null,
                       ),
                     ],
                   ),
@@ -320,7 +344,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Location",
+                        loc.location,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -331,7 +355,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                       TextFormField(
                         controller: _locationController,
                         decoration: InputDecoration(
-                          hintText: "Select location on map...",
+                          hintText: loc.selectLocationOnMapHint,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(color: _primaryLight),
@@ -355,11 +379,11 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                         child: ElevatedButton.icon(
                           onPressed: _useCurrentLocation,
                           icon: Icon(Icons.my_location, size: 20),
-                          label: const Text("Use Current Location"),
+                          label: Text(loc.useCurrentLocation),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primaryLight,
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -369,7 +393,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                       const SizedBox(height: 8),
                       Center(
                         child: Text(
-                          "or tap anywhere on the map below",
+                          loc.orTapMap,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -399,7 +423,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                           Icon(Icons.map, color: _primaryColor, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            "Select Location on Map",
+                            loc.selectLocationOnMapTitle,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
@@ -467,7 +491,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            "Upload Images",
+                            loc.uploadImages,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
@@ -478,7 +502,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Up to 5 images allowed",
+                        loc.upToFiveImages,
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 12),
@@ -524,7 +548,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                                           shape: BoxShape.circle,
                                         ),
                                         child: IconButton(
-                                          icon: Icon(
+                                          icon: const Icon(
                                             Icons.close,
                                             size: 16,
                                             color: Colors.white,
@@ -534,7 +558,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                                                 _selectedImages.removeAt(index),
                                           ),
                                           padding: EdgeInsets.zero,
-                                          constraints: BoxConstraints(
+                                          constraints: const BoxConstraints(
                                             minWidth: 24,
                                             minHeight: 24,
                                           ),
@@ -553,15 +577,15 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _pickImages,
-                          icon: Icon(Icons.add_photo_alternate, size: 20),
+                          icon: const Icon(Icons.add_photo_alternate, size: 20),
                           label: Text(
-                            "Select Images (${_selectedImages.length}/5)",
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                            '${loc.selectImages} (${_selectedImages.length}/5)',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: _primaryColor,
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                               side: BorderSide(color: _primaryColor),
@@ -582,7 +606,7 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                   height: 56,
                   child: ElevatedButton.icon(
                     icon: _isSubmitting
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
@@ -590,10 +614,10 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                               color: Colors.white,
                             ),
                           )
-                        : Icon(Icons.send, size: 24),
+                        : const Icon(Icons.send, size: 24),
                     label: Text(
-                      _isSubmitting ? "Submitting..." : "Submit Activity",
-                      style: TextStyle(
+                      _isSubmitting ? loc.submitting : loc.submitActivity,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),

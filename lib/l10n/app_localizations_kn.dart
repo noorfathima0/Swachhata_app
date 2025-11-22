@@ -69,6 +69,9 @@ class AppLocalizationsKn extends AppLocalizations {
   String get role => 'ಪಾತ್ರ';
 
   @override
+  String get translatingContent => 'ವಿಷಯವನ್ನು ಅನುವಾದಿಸಲಾಗುತ್ತಿದೆ...';
+
+  @override
   String get login => 'ಲಾಗಿನ್';
 
   @override
@@ -162,7 +165,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get activityDetails => 'ಚಟುವಟಿಕೆ ವಿವರಗಳು';
 
   @override
-  String get activityTitle => 'ಚಟುವಟಿಕೆ ಶೀರ್ಷಿಕೆ';
+  String get activityTitle => 'ಚಟುವಟಿಕೆಯ ಶೀರ್ಷಿಕೆ';
 
   @override
   String get activityDescription => 'ಚಟುವಟಿಕೆ ವಿವರಣೆ';
@@ -260,18 +263,6 @@ class AppLocalizationsKn extends AppLocalizations {
   String get phone => 'ಫೋನ್';
 
   @override
-  String get address => 'ವಿಳಾಸ';
-
-  @override
-  String get bio => 'ಜೀವನ ಚರಿತ್ರೆ';
-
-  @override
-  String get language => 'ಭಾಷೆ';
-
-  @override
-  String get joinedOn => 'ಸೇರ್ಪಡೆಯಾದ ದಿನಾಂಕ';
-
-  @override
   String get changeLanguage => 'ಭಾಷೆ ಬದಲಿಸಿ';
 
   @override
@@ -326,7 +317,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get viewProfile => 'ಪ್ರೊಫೈಲ್ ವೀಕ್ಷಿಸಿ';
 
   @override
-  String get forum => 'ಫೋರಮ್';
+  String get forum => 'ಸಮುದಾಯ ಫೋರಮ್';
 
   @override
   String get posts => 'ಪೋಸ್ಟ್‌ಗಳು';
@@ -344,7 +335,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get comment => 'ಕಾಮೆಂಟ್';
 
   @override
-  String get noPosts => 'ಯಾವುದೇ ಪೋಸ್ಟ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ';
+  String get noPosts => 'ಈವರೆಗೆ ಪೋಸ್ಟ್‍ಗಳು ಇಲ್ಲ';
 
   @override
   String get postCreated => 'ಪೋಸ್ಟ್ ಯಶಸ್ವಿಯಾಗಿ ರಚಿಸಲಾಗಿದೆ';
@@ -366,10 +357,22 @@ class AppLocalizationsKn extends AppLocalizations {
   String get myProfile => 'ನನ್ನ ಪ್ರೊಫೈಲ್';
 
   @override
+  String get address => 'ವಿಳಾಸ';
+
+  @override
+  String get bio => 'ಜೀವನ ಚರಿತ್ರೆ';
+
+  @override
+  String get joinedOn => 'ಸೇರ್ಪಡೆಯಾದ ದಿನಾಂಕ';
+
+  @override
   String get notProvided => 'ಒದಗಿಸಲಾಗಿಲ್ಲ';
 
   @override
   String get noBio => 'ಜೀವನ ಚರಿತ್ರೆ ಸೇರಿಸಲಾಗಿಲ್ಲ';
+
+  @override
+  String get language => 'ಭಾಷೆ';
 
   @override
   String get languageChangedEnglish => 'Language changed to English';
@@ -379,4 +382,185 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get unnamedUser => 'ಹೆಸರಿಲ್ಲದ ಬಳಕೆದಾರ';
+
+  @override
+  String get complaintType => 'ದೂರು ಪ್ರಕಾರ';
+
+  @override
+  String get complaintTypeGarbage => 'ಕಸ';
+
+  @override
+  String get complaintTypeDrainage => 'ಒಳಚರಂಡಿ';
+
+  @override
+  String get complaintTypeStreetlight => 'ಬೀದಿ ದೀಪ';
+
+  @override
+  String get complaintTypeRoadDamage => 'ರಸ್ತೆ ಹಾನಿ';
+
+  @override
+  String get complaintTypeOther => 'ಇತರೆ';
+
+  @override
+  String get enterDescription => 'ವಿವರಣೆಯನ್ನು ನಮೂದಿಸಿ';
+
+  @override
+  String get enterAddress => 'ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ';
+
+  @override
+  String get addPhoto => 'ಛಾಯಾಚಿತ್ರ ಪುರಾವೆ ಸೇರಿಸಿ';
+
+  @override
+  String get camera => 'ಕ್ಯಾಮೆರಾ';
+
+  @override
+  String get gallery => 'ಗ್ಯಾಲರಿ';
+
+  @override
+  String get selectLocation => 'ಸ್ಥಳವನ್ನು ಆಯ್ಕೆಮಾಡಿ';
+
+  @override
+  String get useCurrentLocation => 'ಪ್ರಸ್ತುತ ಸ್ಥಳ ಉಪಯೋಗಿಸಿ';
+
+  @override
+  String get failedToLoadImage => 'ಚಿತ್ರವನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಯಿತು';
+
+  @override
+  String get imageNotAvailable => 'ಚಿತ್ರ ಲಭ್ಯವಿಲ್ಲ';
+
+  @override
+  String get submittedOn => 'ಸಲ್ಲಿಸಿಕೆಯ ದಿನಾಂಕ';
+
+  @override
+  String get description => 'ವಿವರಣೆ';
+
+  @override
+  String get addressLabel => '್ಲೋಕೇಶನ್/ವಿಳಾಸ';
+
+  @override
+  String get addressNotAvailable => 'ವಿಳಾಸ ಲಭ್ಯವಿಲ್ಲ';
+
+  @override
+  String get locationOnMap => 'ನಕ್ಷೆಯ上的ಸ್ಥానం';
+
+  @override
+  String get noDescription => 'ವಿವರಣೆ ಲಭ್ಯವಿಲ್ಲ';
+
+  @override
+  String get unknown => 'ಅಜ್ಞಾತ';
+
+  @override
+  String get unknownDate => 'ತಾರೀಖ್ ಅಜ್ಞಾತ';
+
+  @override
+  String get complaintInProgress => 'ಪ್ರಗತಿಯಲ್ಲಿ';
+
+  @override
+  String get beFirstToShare => 'ಏನಾದರೂ ಹಂಚಿದ ಮೊದಲ ವ್ಯಕ್ತಿ ಆಗಿ!';
+
+  @override
+  String get user => 'ಬಳಕೆದಾರ';
+
+  @override
+  String get postDetails => 'ಪೋಸ್ಟ್ ವಿವರಗಳು';
+
+  @override
+  String get likes => 'ಇಷ್ಟಗಳು';
+
+  @override
+  String get comments => 'ಕಾಮೆಂಟ್‌ಗಳು';
+
+  @override
+  String get noCommentsYet => 'ಅವుశ್ಯ ಕಾಮೆಂಟ್‌ಗಳು ಇಲ್ಲ';
+
+  @override
+  String get addCommentPlaceholder => 'ಕಾಮೆಂಟ್ ಸೇರಿಸಿ...';
+
+  @override
+  String get anonymous => 'ಬಹಿರಂಗವಲ್ಲ';
+
+  @override
+  String get submitActivity => 'ಚಟುವಟಿಕೆ ಸಲ್ಲಿಸಿ';
+
+  @override
+  String get enterActivityTitle => 'ಚಟುವಟಿಕೆಯ ಶೀರ್ಷಿಕೆ ನಮೂದಿಸಿ...';
+
+  @override
+  String get enterTitleValidation => 'ದಯವಿಟ್ಟು ಶೀರ್ಷಿಕೆಯನ್ನು ನಮೂದಿಸಿ';
+
+  @override
+  String get describeActivity => 'ನಿಮ್ಮ ಚಟುವಟಿಕೆಯನ್ನು ವಿವರಿಸಿ...';
+
+  @override
+  String get enterDescriptionValidation => 'ದಯವಿಟ್ಟು ವಿವರಣೆಯನ್ನು ನಮೂದಿಸಿ';
+
+  @override
+  String get location => 'ಸ್ಥಳ';
+
+  @override
+  String get selectLocationOnMapHint => 'ನಕ್ಷೆಯ ಮೇಲೆ ಸ್ಥಳ ಆರಿಸಿ...';
+
+  @override
+  String get orTapMap => 'ಅಥವಾ ಕೆಳಗಿನ ನಕ್ಷೆಯ ಮೇಲೆ ಕ್ಲಿಕ್ ಮಾಡಿ';
+
+  @override
+  String get selectLocationOnMapTitle => 'ನಕ್ಷೆಯಲ್ಲಿ ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ';
+
+  @override
+  String get unknownLocation => 'ಸ್ಥಳ ಗೊತ್ತಿಲ್ಲ';
+
+  @override
+  String get failedToGetLocation => 'ಸ್ಥಳ ಪಡೆಯಲು ವಿಫಲವಾಗಿದೆ';
+
+  @override
+  String get uploadImages => 'ಚಿತ್ರಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ';
+
+  @override
+  String get upToFiveImages => 'ಗರಿಷ್ಠ 5 ಚಿತ್ರಗಳು ಅನುಮತಿಸಲಾಗಿವೆ';
+
+  @override
+  String get maxFiveImages => 'ನೀವು ಗರಿಷ್ಟ 5 ಚಿತ್ರಗಳನ್ನು ಅಪ್ಲೋಡ್ ಮಾಡಬಹುದು.';
+
+  @override
+  String get selectImages => 'ಚಿತ್ರಗಳು ಆಯ್ಕೆಮಾಡಿ';
+
+  @override
+  String get activitySubmitted => 'ಚಟುವಟಿಕೆ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಯಿತು!';
+
+  @override
+  String get imageUploadFailed => 'ಚಿತ್ರ ಅಪ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ';
+
+  @override
+  String get selectLocationOnMap => 'ದಯವಿಟ್ಟು ನಕ್ಷೆಯಲ್ಲಿ ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ.';
+
+  @override
+  String get submitting => 'ಸಲ್ಲಿಸಲಾಗುತ್ತಿದೆ...';
+
+  @override
+  String get loginToViewActivities =>
+      'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಚಟುವಟಿಕೆಗಳನ್ನು ನೋಡಲು ಲಾಗಿನ್ ಮಾಡಿ.';
+
+  @override
+  String get myActivities => 'ನನ್ನ ಚಟುವಟಿಕೆಗಳು';
+
+  @override
+  String get noActivitiesFound => 'ಯಾವುದೇ ಚಟುವಟಿಕೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.';
+
+  @override
+  String get untitledActivity => 'ಶೀರ್ಷಿಕೆ ಇಲ್ಲದ ಚಟುವಟಿಕೆ';
+
+  @override
+  String get statusApproved => 'ಅನುಮೋದಿತ';
+
+  @override
+  String get statusRejected => 'ನಿರಾಕರಣ';
+
+  @override
+  String get statusResolved => 'ತಿರಸ್ಕೃತವಲ್ಲ (Resolved) ';
+
+  @override
+  String get statusInProgress => 'ಪ್ರಗತಿಯಲ್ಲಿ';
+
+  @override
+  String get statusPending => 'ಬಾಕಿಯಿದೆ';
 }

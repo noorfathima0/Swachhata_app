@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 import 'activity_detail.dart';
 
 class MyActivitiesPage extends StatelessWidget {
@@ -9,14 +10,15 @@ class MyActivitiesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Text(
-            "Please log in to view your activities.",
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            loc.loginToViewActivities,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ),
       );
@@ -25,9 +27,12 @@ class MyActivitiesPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          "My Activities",
-          style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5),
+        title: Text(
+          loc.myActivities,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.teal,
@@ -42,16 +47,14 @@ class MyActivitiesPage extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.teal),
-            );
+            return Center(child: CircularProgressIndicator(color: Colors.teal));
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                "No activities found.",
-                style: TextStyle(
+                loc.noActivitiesFound,
+                style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
                   fontWeight: FontWeight.w500,
@@ -68,9 +71,9 @@ class MyActivitiesPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final activity = activities[index].data() as Map<String, dynamic>;
               final id = activities[index].id;
-              final title = activity['title'] ?? 'Untitled Activity';
+              final title = activity['title'] ?? loc.untitledActivity;
               final description = activity['description'] ?? '';
-              final status = activity['status'] ?? 'Pending';
+              final status = (activity['status'] ?? 'Pending').toString();
               final createdAt =
                   (activity['createdAt'] as Timestamp?)?.toDate() ??
                   DateTime.now();
@@ -114,14 +117,17 @@ class MyActivitiesPage extends StatelessWidget {
                                   width: 70,
                                   height: 70,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.broken_image, size: 40),
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.broken_image,
+                                    size: 40,
+                                    color: Colors.teal[300],
+                                  ),
                                 )
                               : Container(
                                   width: 70,
                                   height: 70,
                                   color: Colors.teal.withOpacity(0.1),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.image_not_supported,
                                     color: Colors.teal,
                                     size: 40,
@@ -180,7 +186,7 @@ class MyActivitiesPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            status,
+                            _localizedStatus(status, loc),
                             style: TextStyle(
                               color: _statusColor(status),
                               fontWeight: FontWeight.w600,
@@ -210,5 +216,23 @@ class MyActivitiesPage extends StatelessWidget {
       default:
         return Colors.orange;
     }
+  }
+
+  // 🔹 Helper: localized status text
+  String _localizedStatus(String status, AppLocalizations loc) {
+    final s = status.toLowerCase();
+    if (s == 'approved' || s == 'approved'.toLowerCase())
+      return loc.statusApproved;
+    if (s == 'rejected' || s == 'rejected'.toLowerCase())
+      return loc.statusRejected;
+    if (s == 'resolved' || s == 'resolved'.toLowerCase())
+      return loc.statusResolved;
+    if (s == 'in-progress' ||
+        s == 'in progress' ||
+        s == 'in-progress'.toLowerCase())
+      return loc.statusInProgress;
+    if (s == 'pending' || s == 'pending'.toLowerCase())
+      return loc.statusPending;
+    return status;
   }
 }

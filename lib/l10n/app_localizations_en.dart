@@ -69,6 +69,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get role => 'Role';
 
   @override
+  String get translatingContent => 'Translating content...';
+
+  @override
   String get login => 'Login';
 
   @override
@@ -260,18 +263,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phone => 'Phone';
 
   @override
-  String get address => 'Address';
-
-  @override
-  String get bio => 'Bio';
-
-  @override
-  String get language => 'Language';
-
-  @override
-  String get joinedOn => 'Joined on';
-
-  @override
   String get changeLanguage => 'Change Language';
 
   @override
@@ -326,7 +317,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewProfile => 'View Profile';
 
   @override
-  String get forum => 'Forum';
+  String get forum => 'Community Forum';
 
   @override
   String get posts => 'Posts';
@@ -366,10 +357,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myProfile => 'My Profile';
 
   @override
+  String get address => 'Address';
+
+  @override
+  String get bio => 'Bio';
+
+  @override
+  String get joinedOn => 'Joined on';
+
+  @override
   String get notProvided => 'Not provided';
 
   @override
   String get noBio => 'No bio added';
+
+  @override
+  String get language => 'Language';
 
   @override
   String get languageChangedEnglish => 'Language changed to English';
@@ -379,4 +382,184 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unnamedUser => 'Unnamed User';
+
+  @override
+  String get complaintType => 'Complaint Type';
+
+  @override
+  String get complaintTypeGarbage => 'Garbage';
+
+  @override
+  String get complaintTypeDrainage => 'Drainage';
+
+  @override
+  String get complaintTypeStreetlight => 'Streetlight';
+
+  @override
+  String get complaintTypeRoadDamage => 'Road Damage';
+
+  @override
+  String get complaintTypeOther => 'Other';
+
+  @override
+  String get enterDescription => 'Enter description';
+
+  @override
+  String get enterAddress => 'Enter address';
+
+  @override
+  String get addPhoto => 'Add Photo Evidence';
+
+  @override
+  String get camera => 'Camera';
+
+  @override
+  String get gallery => 'Gallery';
+
+  @override
+  String get selectLocation => 'Select Location';
+
+  @override
+  String get useCurrentLocation => 'Use Current Location';
+
+  @override
+  String get failedToLoadImage => 'Failed to load image';
+
+  @override
+  String get imageNotAvailable => 'Image not available';
+
+  @override
+  String get submittedOn => 'Submitted on';
+
+  @override
+  String get description => 'Description';
+
+  @override
+  String get addressLabel => 'Address';
+
+  @override
+  String get addressNotAvailable => 'Address not available';
+
+  @override
+  String get locationOnMap => 'Location on Map';
+
+  @override
+  String get noDescription => 'No description available';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get unknownDate => 'Unknown date';
+
+  @override
+  String get complaintInProgress => 'In Progress';
+
+  @override
+  String get beFirstToShare => 'Be the first to share something!';
+
+  @override
+  String get user => 'User';
+
+  @override
+  String get postDetails => 'Post Details';
+
+  @override
+  String get likes => 'likes';
+
+  @override
+  String get comments => 'Comments';
+
+  @override
+  String get noCommentsYet => 'No comments yet.';
+
+  @override
+  String get addCommentPlaceholder => 'Add a comment...';
+
+  @override
+  String get anonymous => 'Anonymous';
+
+  @override
+  String get submitActivity => 'Submit Activity';
+
+  @override
+  String get enterActivityTitle => 'Enter activity title...';
+
+  @override
+  String get enterTitleValidation => 'Please enter a title';
+
+  @override
+  String get describeActivity => 'Describe your activity...';
+
+  @override
+  String get enterDescriptionValidation => 'Please enter a description';
+
+  @override
+  String get location => 'Location';
+
+  @override
+  String get selectLocationOnMapHint => 'Select location on map...';
+
+  @override
+  String get orTapMap => 'or tap anywhere on the map below';
+
+  @override
+  String get selectLocationOnMapTitle => 'Select Location on Map';
+
+  @override
+  String get unknownLocation => 'Unknown location';
+
+  @override
+  String get failedToGetLocation => 'Failed to get location';
+
+  @override
+  String get uploadImages => 'Upload Images';
+
+  @override
+  String get upToFiveImages => 'Up to 5 images allowed';
+
+  @override
+  String get maxFiveImages => 'You can upload up to 5 images only.';
+
+  @override
+  String get selectImages => 'Select Images';
+
+  @override
+  String get activitySubmitted => 'Activity submitted successfully!';
+
+  @override
+  String get imageUploadFailed => 'Image upload failed';
+
+  @override
+  String get selectLocationOnMap => 'Please select a location on the map.';
+
+  @override
+  String get submitting => 'Submitting...';
+
+  @override
+  String get loginToViewActivities => 'Please log in to view your activities.';
+
+  @override
+  String get myActivities => 'My Activities';
+
+  @override
+  String get noActivitiesFound => 'No activities found.';
+
+  @override
+  String get untitledActivity => 'Untitled Activity';
+
+  @override
+  String get statusApproved => 'Approved';
+
+  @override
+  String get statusRejected => 'Rejected';
+
+  @override
+  String get statusResolved => 'Resolved';
+
+  @override
+  String get statusInProgress => 'In-Progress';
+
+  @override
+  String get statusPending => 'Pending';
 }

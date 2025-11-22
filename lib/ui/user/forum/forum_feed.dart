@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 import 'post_detail.dart';
 
 class UserForumPage extends StatefulWidget {
@@ -43,14 +44,15 @@ class _UserForumPageState extends State<UserForumPage> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     final user = _auth.currentUser;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          "Community Forum",
-          style: TextStyle(
+        title: Text(
+          loc.forum, // "Community Forum" localized
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.white,
             fontSize: 20,
@@ -72,6 +74,7 @@ class _UserForumPageState extends State<UserForumPage> {
               child: CircularProgressIndicator(color: _primaryColor),
             );
           }
+
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Column(
@@ -80,7 +83,7 @@ class _UserForumPageState extends State<UserForumPage> {
                   Icon(Icons.forum_outlined, size: 64, color: _primaryLight),
                   const SizedBox(height: 16),
                   Text(
-                    "No posts yet",
+                    loc.noPosts, // localized "No posts yet"
                     style: TextStyle(
                       fontSize: 18,
                       color: _primaryDark,
@@ -89,7 +92,7 @@ class _UserForumPageState extends State<UserForumPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Be the first to share something!",
+                    loc.beFirstToShare,
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                 ],
@@ -114,12 +117,12 @@ class _UserForumPageState extends State<UserForumPage> {
                   : [];
               final bool isLiked = user != null && likes.contains(user.uid);
               final int commentCount = (data['commentsCount'] ?? 0) as int;
-              final String adminName = data['adminName'] ?? 'User';
+              final String adminName = data['adminName'] ?? loc.user;
               final String profileImageUrl = data['profileImageUrl'] ?? '';
               final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
               final formattedDate = createdAt != null
                   ? DateFormat('dd MMM, hh:mm a').format(createdAt)
-                  : 'Unknown date';
+                  : loc.unknownDate;
               final postContent = data['content'] ?? '';
 
               return GestureDetector(
@@ -142,7 +145,7 @@ class _UserForumPageState extends State<UserForumPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header (Admin info)
+                      // Header (Author info)
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -257,7 +260,7 @@ class _UserForumPageState extends State<UserForumPage> {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'Failed to load image',
+                                            loc.failedToLoadImage,
                                             style: TextStyle(
                                               color: _primaryDark,
                                             ),

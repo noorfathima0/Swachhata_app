@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 
 class PostDetailPage extends StatefulWidget {
   final String postId;
@@ -72,7 +73,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   Future<void> _addComment() async {
     final user = _auth.currentUser;
-    if (user == null || _commentController.text.trim().isEmpty) return;
+    final loc = AppLocalizations.of(context)!;
+    if (user == null || _commentController.text.trim().isEmpty) {
+      // optionally show a localized message here
+      return;
+    }
 
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
@@ -80,7 +85,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
         userDoc.data()?['name'] ??
         user.displayName ??
         user.email?.split('@').first ??
-        'Anonymous';
+        loc.anonymous;
     String profileImageUrl = userDoc.data()?['profileImageUrl'] ?? '';
 
     final commentData = {
@@ -122,14 +127,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     final user = _auth.currentUser;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          "Post Details",
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          loc.postDetails,
+          style: const TextStyle(color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: _primaryColor,
@@ -150,12 +156,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
               ? data['likes'] as List
               : [];
           final bool isLiked = user != null && likes.contains(user.uid);
-          final adminName = data['adminName'] ?? 'Admin';
+          final adminName = data['adminName'] ?? loc.user;
           final content = data['content'] ?? '';
           final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
           final formattedDate = createdAt != null
               ? DateFormat('dd MMM, hh:mm a').format(createdAt)
-              : 'Unknown date';
+              : loc.unknownDate;
           final profileImageUrl = data['profileImageUrl'] ?? '';
 
           return Column(
@@ -232,35 +238,38 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     ),
 
                     // ❤️ Likes
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked ? Colors.red : _primaryColor,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: isLiked ? Colors.red : _primaryColor,
+                            ),
+                            onPressed: user == null
+                                ? null
+                                : () => _toggleLike(likes),
                           ),
-                          onPressed: user == null
-                              ? null
-                              : () => _toggleLike(likes),
-                        ),
-                        Text(
-                          "${likes.length} likes",
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                          Text(
+                            "${likes.length} ${loc.likes}",
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
                     ),
 
                     const Divider(),
 
                     // 💬 Comments Section
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
                       child: Text(
-                        "Comments",
-                        style: TextStyle(
+                        loc.comments,
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -276,16 +285,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: _primaryColor,
+                            ),
                           );
                         }
 
                         final comments = snapshot.data!.docs;
                         if (comments.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text("No comments yet."),
+                          return Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(loc.noCommentsYet),
                           );
                         }
 
@@ -320,7 +331,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     : null,
                               ),
                               title: Text(
-                                comment['userName'] ?? 'Anonymous',
+                                comment['userName'] ?? loc.anonymous,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: _primaryDark,
@@ -330,6 +341,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(comment['text'] ?? ''),
+                                  const SizedBox(height: 4),
                                   Text(
                                     formattedDate,
                                     style: const TextStyle(
@@ -362,8 +374,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       Expanded(
                         child: TextField(
                           controller: _commentController,
-                          decoration: const InputDecoration(
-                            hintText: "Add a comment...",
+                          decoration: InputDecoration(
+                            hintText: loc.addCommentPlaceholder,
                             border: InputBorder.none,
                           ),
                         ),

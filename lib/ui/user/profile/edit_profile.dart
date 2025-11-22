@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:swachhata_app/services/imgbb_service.dart';
+import 'package:swachhata_app/l10n/app_localizations.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -64,12 +65,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() => _profileImageUrl = url);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Image uploaded successfully!")),
+        SnackBar(content: Text(AppLocalizations.of(context)!.success)),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("❌ Image upload failed: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${AppLocalizations.of(context)!.success} $e")),
+      );
     }
 
     setState(() => _isLoading = false);
@@ -92,9 +93,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
 
     setState(() => _isLoading = false);
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Profile updated successfully!")),
+        SnackBar(content: Text(AppLocalizations.of(context)!.profileUpdated)),
       );
       Navigator.pop(context);
     }
@@ -102,14 +104,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     const tealColor = Colors.teal;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          "Edit Profile",
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: Text(
+          loc.editProfile,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
         backgroundColor: tealColor,
@@ -124,7 +127,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Profile Image
+                    // ✅ Profile Image
                     GestureDetector(
                       onTap: _pickImage,
                       child: Stack(
@@ -139,8 +142,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 ? NetworkImage(_profileImageUrl!)
                                 : null,
                             child:
-                                _profileImageUrl == null ||
-                                    _profileImageUrl!.isEmpty
+                                (_profileImageUrl == null ||
+                                    _profileImageUrl!.isEmpty)
                                 ? const Icon(
                                     Icons.person,
                                     size: 60,
@@ -163,45 +166,64 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                     const SizedBox(height: 25),
 
-                    // Name
+                    // ✅ Name
                     TextFormField(
                       controller: _nameController,
-                      decoration: _inputDecoration("Full Name", Icons.person),
+                      decoration: _inputDecoration(loc.name, Icons.person),
                       validator: (v) =>
-                          v == null || v.isEmpty ? 'Enter your name' : null,
+                          v == null || v.isEmpty ? loc.enterName : null,
                     ),
                     const SizedBox(height: 15),
 
-                    // Bio
+                    // ✅ Bio
                     TextFormField(
                       controller: _bioController,
-                      decoration: _inputDecoration("Bio", Icons.info_outline),
+                      decoration: _inputDecoration(loc.bio, Icons.info_outline),
                     ),
                     const SizedBox(height: 15),
 
-                    // Phone
+                    // ✅ Phone
                     TextFormField(
                       controller: _phoneController,
-                      decoration: _inputDecoration("Phone", Icons.phone),
+                      decoration: _inputDecoration(loc.phone, Icons.phone),
                       keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 15),
 
-                    // Address
+                    // ✅ Address
                     TextFormField(
                       controller: _addressController,
                       decoration: _inputDecoration(
-                        "Address",
+                        loc.address,
                         Icons.location_on,
                       ),
                     ),
                     const SizedBox(height: 25),
 
-                    // Save Button
+                    // ✅ Language Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedLanguage,
+                      decoration: _inputDecoration(
+                        loc.language,
+                        Icons.language,
+                      ),
+                      items: [
+                        DropdownMenuItem(value: 'en', child: Text(loc.english)),
+                        DropdownMenuItem(value: 'kn', child: Text(loc.kannada)),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _selectedLanguage = v);
+                      },
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    // ✅ Save Button
                     ElevatedButton.icon(
                       onPressed: _saveProfile,
                       icon: const Icon(Icons.save),
-                      label: const Text("Save Changes"),
+                      label: Text(loc.save),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         backgroundColor: tealColor,
@@ -222,7 +244,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // Custom input decoration for uniform style
+  // ✅ Localized, styled input decoration
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -230,10 +252,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.teal),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Colors.teal),
