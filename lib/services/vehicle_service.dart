@@ -15,7 +15,6 @@ class VehicleService {
     GeoPoint? routeStart,
     GeoPoint? routeEnd,
     required double km,
-    required int time,
   }) async {
     await FirebaseFirestore.instance.collection("vehicles").add({
       "type": type,
@@ -25,7 +24,6 @@ class VehicleService {
       "manualRoute": manualRoute,
       "mapRoute": {"start": routeStart, "end": routeEnd},
       "km": km,
-      "time": time,
       "liveLocation": null, // future update from GPS device
       "createdAt": FieldValue.serverTimestamp(),
     });

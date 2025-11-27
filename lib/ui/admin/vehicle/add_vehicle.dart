@@ -22,7 +22,6 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   final TextEditingController _endRouteController = TextEditingController();
   final TextEditingController _stopInputController = TextEditingController();
   final TextEditingController _kmController = TextEditingController();
-  final TextEditingController _timeController = TextEditingController();
 
   List<String> _stops = [];
 
@@ -121,7 +120,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
 
               const SizedBox(height: 20),
 
-              // KM + TIME INPUT
+              // KM INPUT
               TextFormField(
                 controller: _kmController,
                 keyboardType: TextInputType.number,
@@ -129,13 +128,6 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 validator: (v) => v!.isEmpty ? "Enter distance in KM" : null,
               ),
               const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _timeController,
-                keyboardType: TextInputType.number,
-                decoration: _input("Time to travel (minutes)", Icons.timer),
-                validator: (v) => v!.isEmpty ? "Enter travel time" : null,
-              ),
 
               const SizedBox(height: 28),
 
@@ -348,7 +340,6 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
 
       // NEW FIELDS
       km: double.tryParse(_kmController.text.trim()) ?? 0.0,
-      time: int.tryParse(_timeController.text.trim()) ?? 0,
     );
 
     ScaffoldMessenger.of(context).showSnackBar(

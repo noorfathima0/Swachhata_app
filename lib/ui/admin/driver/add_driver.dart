@@ -40,6 +40,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(labelText: "Phone Number"),
+                keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? "Enter phone number" : null,
               ),
               const SizedBox(height: 10),

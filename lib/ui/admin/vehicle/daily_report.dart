@@ -31,9 +31,7 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     );
 
     if (picked != null) {
-      setState(() {
-        selectedDate = picked;
-      });
+      setState(() => selectedDate = picked);
       _loadReports();
     }
   }
@@ -57,7 +55,7 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    String formattedDate = DateFormat("dd MMM yyyy").format(selectedDate);
+    final formattedDate = DateFormat("dd MMM yyyy").format(selectedDate);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,57 +89,58 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
                 ...vehicles.map((v) {
                   final data = v.data() as Map<String, dynamic>;
 
-                  final service = data["service"];
+                  final allottedKm = (data["km"] ?? 0.0).toDouble();
+
+                  final service =
+                      data["service"]; // stored after driver completes
                   final status = (data["status"] ?? "idle").toString();
 
-                  String type = data["type"] ?? "";
-                  String number = data["number"] ?? "";
+                  final type = data["type"] ?? "";
+                  final number = data["number"] ?? "";
 
                   if (service == null) {
                     return _buildVehicleCard(
                       type: type,
                       number: number,
                       status: status,
+                      allottedKm: allottedKm,
                       distance: 0,
+                      percent: 0,
                       time: 0,
                       start: "-",
                       end: "-",
                     );
                   }
 
-                  Timestamp? startTs = service["startTime"];
-                  Timestamp? endTs = service["endTime"];
+                  final Timestamp? startTs = service["startTime"];
+                  final Timestamp? endTs = service["endTime"];
 
-                  if (startTs == null || endTs == null) {
-                    return _buildVehicleCard(
-                      type: type,
-                      number: number,
-                      status: status,
-                      distance: 0,
-                      time: 0,
-                      start: "-",
-                      end: "-",
-                    );
-                  }
-
-                  // Only show if this service was done today
-                  if (!_isSameDate(startTs, selectedDate)) {
+                  if (startTs == null ||
+                      endTs == null ||
+                      !_isSameDate(startTs, selectedDate)) {
                     return const SizedBox();
                   }
 
-                  double distance = service["distanceKm"] ?? 0.0;
-                  int timeMinutes = service["durationMinutes"] ?? 0;
+                  final traveledKm = (service["distanceKm"] ?? 0.0).toDouble();
 
-                  String startStr = DateFormat(
+                  final timeMinutes = (service["durationMinutes"] ?? 0).toInt();
+
+                  final percent = allottedKm > 0
+                      ? (traveledKm / allottedKm) * 100
+                      : 0.0;
+
+                  final startStr = DateFormat(
                     "hh:mm a",
                   ).format(startTs.toDate());
-                  String endStr = DateFormat("hh:mm a").format(endTs.toDate());
+                  final endStr = DateFormat("hh:mm a").format(endTs.toDate());
 
                   return _buildVehicleCard(
                     type: type,
                     number: number,
                     status: status,
-                    distance: distance,
+                    allottedKm: allottedKm,
+                    distance: traveledKm,
+                    percent: percent,
                     time: timeMinutes,
                     start: startStr,
                     end: endStr,
@@ -152,15 +151,24 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     );
   }
 
+  // ---------------- VEHICLE CARD ----------------
   Widget _buildVehicleCard({
     required String type,
     required String number,
     required String status,
+    required double allottedKm,
     required double distance,
+    required double percent,
     required int time,
     required String start,
     required String end,
   }) {
+    Color percentColor = percent >= 80
+        ? Colors.green
+        : percent >= 40
+        ? Colors.orange
+        : Colors.red;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -170,31 +178,66 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // VEHICLE TITLE
             Text(
               "$type - $number",
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 6),
 
+            const SizedBox(height: 12),
+
+            // ALLOTTED & TRAVELLED
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _infoTile("Distance", "${distance.toStringAsFixed(2)} KM"),
-                _infoTile("Time", "$time min"),
+                _infoTile("Allotted KM", allottedKm.toStringAsFixed(2)),
+                _infoTile("Travelled", "${distance.toStringAsFixed(2)} KM"),
               ],
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [_infoTile("Start", start), _infoTile("End", end)],
+            // 🔥 Progress Bar
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Completed: ${percent.toStringAsFixed(1)}%",
+                  style: TextStyle(
+                    color: percentColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: percent / 100,
+                    backgroundColor: Colors.grey.shade300,
+                    color: percentColor,
+                    minHeight: 8,
+                  ),
+                ),
+              ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
+            // TIME & START-END
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _infoTile("Time", "$time min"),
+                _infoTile("Start", start),
+                _infoTile("End", end),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // STATUS BADGE
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: status == "completed"
                     ? Colors.green.withOpacity(.2)
@@ -221,6 +264,7 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     );
   }
 
+  // ---------------- SMALL TILE ----------------
   Widget _infoTile(String title, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
