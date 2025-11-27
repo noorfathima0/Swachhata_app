@@ -71,6 +71,8 @@ class UserDashboard extends StatelessWidget {
         centerTitle: true,
         elevation: 2,
         backgroundColor: Colors.teal.shade800,
+        automaticallyImplyLeading: false,
+        leading: Container(),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -107,9 +109,9 @@ class UserDashboard extends StatelessWidget {
                 itemCount: dashboardItems.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  mainAxisExtent: 160,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                  mainAxisExtent: 140,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
                 ),
                 itemBuilder: (context, index) {
                   final item = dashboardItems[index];

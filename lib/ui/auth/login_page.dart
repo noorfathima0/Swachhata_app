@@ -21,18 +21,48 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
 
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
     try {
-      await auth.login(
-        emailController.text.trim(),
-        passwordController.text.trim(),
-      );
+      // ---------------------------
+      // 🚖 DRIVER LOGIN DETECTION
+      // ---------------------------
+      if (email.endsWith("@driver.com")) {
+        await auth.login(email, password);
+
+        final user = auth.currentUser;
+        if (user == null) throw "Driver login failed.";
+
+        // Fetch driver from drivers collection
+        final driverSnap = await FirebaseFirestore.instance
+            .collection("drivers")
+            .doc(user.uid)
+            .get();
+
+        if (!driverSnap.exists) {
+          throw "Driver account not found in database.";
+        }
+
+        // Redirect to driver dashboard
+        Navigator.pushReplacementNamed(context, '/driver-dashboard');
+        return;
+      }
+
+      // ---------------------------
+      // 👤 NORMAL USER / ADMIN LOGIN
+      // ---------------------------
+      await auth.login(email, password);
+
       final user = auth.currentUser;
       if (user != null) {
         final snap = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
+
         final role = snap['role'] ?? 'user';
+
         if (role == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin-dashboard');
         } else {

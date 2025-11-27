@@ -8,6 +8,8 @@ import 'activity/activities.dart';
 import 'event/event.dart';
 import 'user_management/user_management.dart';
 import 'profile/profile.dart';
+import 'vehicle/vehicle_management.dart';
+import 'driver/driver_management.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -48,10 +50,22 @@ class AdminDashboard extends StatelessWidget {
         destination: const AdminUserManagementPage(),
       ),
       _AdminDashboardItem(
+        title: "Vehicle Management",
+        icon: Icons.directions_bus,
+        color: Colors.indigo.shade700,
+        destination: const AdminVehicleManagementPage(),
+      ),
+      _AdminDashboardItem(
         title: "Admin Profile",
         icon: Icons.person_outline,
         color: Colors.teal.shade700,
         destination: const AdminProfilePage(),
+      ),
+      _AdminDashboardItem(
+        title: "Driver Management",
+        icon: Icons.local_shipping_outlined,
+        color: Colors.brown.shade700,
+        destination: const AdminDriverManagementPage(),
       ),
     ];
 
@@ -65,6 +79,8 @@ class AdminDashboard extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.4),
         ),
         centerTitle: true,
+        automaticallyImplyLeading: false,
+        leading: Container(),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -84,7 +100,7 @@ class AdminDashboard extends StatelessWidget {
             const Text(
               "Welcome, Administrator 👨‍💼",
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
               ),
@@ -102,8 +118,8 @@ class AdminDashboard extends StatelessWidget {
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisExtent: 160,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
                 ),
                 itemBuilder: (context, index) {
                   final item = dashboardItems[index];
