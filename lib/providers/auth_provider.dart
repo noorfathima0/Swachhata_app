@@ -18,10 +18,13 @@ class AuthProvider with ChangeNotifier {
     try {
       isLoading = true;
       notifyListeners();
-      currentUser = await _authService.loginUser(
-        email: email,
-        password: password,
-      );
+
+      await _authService.loginUser(email: email, password: password);
+
+      // 👇 Force set currentUser again (critical fix)
+      currentUser = FirebaseAuth.instance.currentUser;
+
+      notifyListeners();
     } catch (e) {
       rethrow;
     } finally {
@@ -34,11 +37,15 @@ class AuthProvider with ChangeNotifier {
     try {
       isLoading = true;
       notifyListeners();
-      currentUser = await _authService.registerUser(
+
+      await _authService.registerUser(
         name: name,
         email: email,
         password: password,
       );
+
+      // 👇 Force refresh after signup
+      currentUser = FirebaseAuth.instance.currentUser;
     } catch (e) {
       rethrow;
     } finally {
@@ -49,6 +56,8 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _authService.logout();
+    currentUser = null;
+    notifyListeners();
   }
 
   Future<void> resetPassword(String email) async {

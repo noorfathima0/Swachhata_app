@@ -37,6 +37,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     v!.isEmpty ? "Please enter driver name" : null,
               ),
               const SizedBox(height: 10),
+
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(labelText: "Phone Number"),
@@ -44,6 +45,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 validator: (v) => v!.isEmpty ? "Enter phone number" : null,
               ),
               const SizedBox(height: 10),
+
               TextFormField(
                 controller: _ageController,
                 decoration: const InputDecoration(labelText: "Age"),
@@ -51,6 +53,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 validator: (v) => v!.isEmpty ? "Enter age" : null,
               ),
               const SizedBox(height: 10),
+
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: "Password"),
@@ -58,6 +61,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 validator: (v) => v!.isEmpty ? "Enter password" : null,
               ),
               const SizedBox(height: 20),
+
               ElevatedButton(
                 onPressed: _loading ? null : _addDriver,
                 style: ElevatedButton.styleFrom(

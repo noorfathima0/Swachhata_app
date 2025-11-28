@@ -103,7 +103,18 @@ class _EditDriverPageState extends State<EditDriverPage> {
     setState(() => _deleting = true);
 
     try {
-      await DriverService().deleteDriver(widget.driverId);
+      final driverEmail = widget.driverData['email'] ?? '';
+      final driverPassword = widget.driverData['password'] ?? '';
+
+      if (driverEmail.isEmpty || driverPassword.isEmpty) {
+        throw Exception("Driver email or password missing.");
+      }
+
+      await DriverService().deleteDriver(
+        widget.driverId,
+        driverEmail,
+        driverPassword,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Driver deleted successfully")),
@@ -161,7 +172,7 @@ class _EditDriverPageState extends State<EditDriverPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // EMAIL (READ ONLY)
+                      // EMAIL
                       Text(
                         "Email",
                         style: TextStyle(color: Colors.grey[700], fontSize: 13),
@@ -175,7 +186,7 @@ class _EditDriverPageState extends State<EditDriverPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ACCOUNT CREATED DATE
+                      // CREATED AT
                       Text(
                         "Account Created",
                         style: TextStyle(color: Colors.grey[700], fontSize: 13),
