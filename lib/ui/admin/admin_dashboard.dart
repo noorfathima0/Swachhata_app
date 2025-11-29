@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:swachhata_app/ui/admin/forum/forum_page.dart';
-import 'package:swachhata_app/l10n/app_localizations.dart';
+
 import '../../providers/auth_provider.dart';
+
+// Pages
 import 'complaints/complaints_list.dart';
 import 'activity/activities.dart';
 import 'event/event.dart';
+import 'forum/forum_page.dart';
 import 'user_management/user_management.dart';
 import 'profile/profile.dart';
 import 'vehicle/vehicle_management.dart';
@@ -20,29 +22,25 @@ class AdminDashboard extends StatelessWidget {
 
     final List<_AdminDashboardItem> dashboardItems = [
       _AdminDashboardItem(
-        title: "View Complaints",
-        icon: Icons.list_alt_outlined,
+        title: "Operations",
+        icon: Icons.dashboard_customize,
         color: Colors.red.shade700,
-        destination: const AdminComplaintPage(),
+        submenu: [
+          _SubItem("View Complaints", const AdminComplaintPage()),
+          _SubItem("Manage Activities", const AdminActivityPage()),
+        ],
       ),
+
       _AdminDashboardItem(
-        title: "Forum Management",
-        icon: Icons.forum_outlined,
+        title: "Community Hub",
+        icon: Icons.hub_outlined,
         color: Colors.blue.shade700,
-        destination: const AdminForumPage(),
+        submenu: [
+          _SubItem("Forum Management", const AdminForumPage()),
+          _SubItem("Events Oversight", const AdminEventPage()),
+        ],
       ),
-      _AdminDashboardItem(
-        title: "Manage Activities",
-        icon: Icons.task_outlined,
-        color: Colors.green.shade700,
-        destination: const AdminActivityPage(),
-      ),
-      _AdminDashboardItem(
-        title: "Events Oversight",
-        icon: Icons.event_note_outlined,
-        color: Colors.deepPurple.shade700,
-        destination: const AdminEventPage(),
-      ),
+
       _AdminDashboardItem(
         title: "User Management",
         icon: Icons.people_alt_outlined,
@@ -54,12 +52,6 @@ class AdminDashboard extends StatelessWidget {
         icon: Icons.directions_bus,
         color: Colors.indigo.shade700,
         destination: const AdminVehicleManagementPage(),
-      ),
-      _AdminDashboardItem(
-        title: "Admin Profile",
-        icon: Icons.person_outline,
-        color: Colors.teal.shade700,
-        destination: const AdminProfilePage(),
       ),
       _AdminDashboardItem(
         title: "Driver Management",
@@ -81,17 +73,55 @@ class AdminDashboard extends StatelessWidget {
         centerTitle: true,
         automaticallyImplyLeading: false,
         leading: Container(),
+
+        // -----------------------
+        // 🔽 PROFILE DROPDOWN MENU
+        // -----------------------
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: "Logout",
-            onPressed: () {
-              auth.logout();
-              Navigator.pop(context);
+          PopupMenuButton(
+            icon: const Icon(Icons.person, size: 28),
+            color: Colors.white,
+            elevation: 6,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (value) {
+              if (value == 'profile') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminProfilePage()),
+                );
+              } else if (value == 'logout') {
+                auth.logout();
+                Navigator.pop(context);
+              }
             },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'profile',
+                child: Row(
+                  children: const [
+                    Icon(Icons.person, color: Colors.teal),
+                    SizedBox(width: 10),
+                    Text("Profile"),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: const [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 10),
+                    Text("Logout"),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
@@ -111,6 +141,7 @@ class AdminDashboard extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
             const SizedBox(height: 20),
+
             Expanded(
               child: GridView.builder(
                 physics: const BouncingScrollPhysics(),
@@ -134,17 +165,25 @@ class AdminDashboard extends StatelessWidget {
   }
 }
 
+class _SubItem {
+  final String title;
+  final Widget page;
+  _SubItem(this.title, this.page);
+}
+
 class _AdminDashboardItem {
   final String title;
   final IconData icon;
   final Color color;
-  final Widget destination;
+  final Widget? destination;
+  final List<_SubItem>? submenu;
 
   _AdminDashboardItem({
     required this.title,
     required this.icon,
     required this.color,
-    required this.destination,
+    this.destination,
+    this.submenu,
   });
 }
 
@@ -157,10 +196,44 @@ class _AdminDashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(18),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => item.destination),
-      ),
+      onTap: () {
+        if (item.submenu != null) {
+          // -----------------------
+          // SHOW SUB-MENU DIALOG
+          // -----------------------
+          showDialog(
+            context: context,
+            builder: (ctx) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...item.submenu!.map(
+                    (sub) => ListTile(
+                      title: Text(sub.title),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => sub.page),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => item.destination!),
+          );
+        }
+      },
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(

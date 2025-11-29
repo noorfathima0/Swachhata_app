@@ -67,7 +67,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+    Provider.of<LocaleProvider>(context, listen: false);
 
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -181,74 +181,6 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
 
             const SizedBox(height: 25),
             _buildSectionTitle("App Preferences"),
-
-            // 🌐 Language Selector
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.language, color: Colors.teal),
-                    const SizedBox(width: 12),
-                    Text(
-                      loc.language,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    DropdownButton<Locale>(
-                      value: _selectedLocale,
-                      underline: const SizedBox(),
-                      onChanged: (locale) async {
-                        if (locale != null) {
-                          localeProvider.setLocale(locale);
-                          final user = FirebaseAuth.instance.currentUser;
-                          if (user != null) {
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .update({'language': locale.languageCode});
-                          }
-
-                          setState(() => _selectedLocale = locale);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: _primaryColor,
-                              content: Text(
-                                locale.languageCode == 'kn'
-                                    ? "ಭಾಷೆ ಕನ್ನಡಕ್ಕೆ ಬದಲಾಗಿದೆ"
-                                    : "Language changed to English",
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      items: const [
-                        DropdownMenuItem(
-                          value: Locale('en'),
-                          child: Text("English"),
-                        ),
-                        DropdownMenuItem(
-                          value: Locale('kn'),
-                          child: Text("ಕನ್ನಡ"),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
             const SizedBox(height: 30),
 
