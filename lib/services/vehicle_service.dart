@@ -4,6 +4,7 @@ class VehicleService {
   final CollectionReference _vehicles = FirebaseFirestore.instance.collection(
     'vehicles',
   );
+  List<Map<String, dynamic>>? pendingMapPolyline;
 
   // ADD VEHICLE
   Future<void> addVehicle({
@@ -26,7 +27,9 @@ class VehicleService {
       "km": km,
       "liveLocation": null, // future update from GPS device
       "createdAt": FieldValue.serverTimestamp(),
-    });
+      'completedAt': FieldValue.serverTimestamp(),
+      "mapRoutePoints": pendingMapPolyline,
+      });
   }
 
   // GET ALL VEHICLES

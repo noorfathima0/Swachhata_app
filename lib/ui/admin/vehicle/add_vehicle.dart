@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -63,8 +64,22 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 onChanged: (v) {
                   setState(() {
                     _vehicleType = v!;
+
+                    // Auto + Tipper always collection
                     if (v == "auto" || v == "tipper") {
                       _jobType = "collection";
+                    }
+
+                    // JCB Special Mode
+                    if (v == "jcb") {
+                      _routeType = "jcb_stops"; // disable normal route mode
+                      _stops.clear();
+                      _startRouteController.clear();
+                      _endRouteController.clear();
+                      _startPoint = null;
+                      _endPoint = null;
+                    } else {
+                      _routeType = "manual"; // default for others
                     }
                   });
                 },
@@ -99,35 +114,42 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               ),
               const SizedBox(height: 16),
 
-              // ROUTE TYPE
-              DropdownButtonFormField(
-                value: _routeType,
-                items: const [
-                  DropdownMenuItem(
-                    value: "manual",
-                    child: Text("Manual Route"),
-                  ),
-                  DropdownMenuItem(value: "map", child: Text("Map Route")),
-                ],
-                onChanged: (v) => setState(() => _routeType = v!),
-                decoration: _input("Route Type", Icons.map),
-              ),
-
+              // ROUTE TYPE — hidden for JCB
+              if (_vehicleType != "jcb")
+                DropdownButtonFormField(
+                  value: _routeType,
+                  items: const [
+                    DropdownMenuItem(
+                      value: "manual",
+                      child: Text("Manual Route"),
+                    ),
+                    DropdownMenuItem(value: "map", child: Text("Map Route")),
+                  ],
+                  onChanged: (v) => setState(() => _routeType = v!),
+                  decoration: _input("Route Type", Icons.map),
+                ),
               const SizedBox(height: 16),
 
-              if (_routeType == "manual") _buildManualRoute(),
-              if (_routeType == "map") _buildMapRoutePicker(),
+              // SPECIAL JCB ONLY UI
+              if (_vehicleType == "jcb") _buildJCBStops(),
+
+              // NORMAL VEHICLE ROUTE UIs
+              if (_vehicleType != "jcb" && _routeType == "manual")
+                _buildManualRoute(),
+
+              if (_vehicleType != "jcb" && _routeType == "map")
+                _buildMapRoutePicker(),
 
               const SizedBox(height: 20),
 
-              // KM INPUT
-              TextFormField(
-                controller: _kmController,
-                keyboardType: TextInputType.number,
-                decoration: _input("KM to travel", Icons.speed),
-                validator: (v) => v!.isEmpty ? "Enter distance in KM" : null,
-              ),
-              const SizedBox(height: 16),
+              // KM INPUT — hidden for JCB
+              if (_vehicleType != "jcb")
+                TextFormField(
+                  controller: _kmController,
+                  keyboardType: TextInputType.number,
+                  decoration: _input("KM to travel", Icons.speed),
+                  validator: (v) => v!.isEmpty ? "Enter distance in KM" : null,
+                ),
 
               const SizedBox(height: 28),
 
@@ -143,6 +165,61 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ------------------ JCB STOP UI ------------------
+  Widget _buildJCBStops() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "JCB Stop Points",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _stopInputController,
+                decoration: const InputDecoration(
+                  hintText: "Add JCB stop location...",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                if (_stopInputController.text.isNotEmpty) {
+                  setState(() {
+                    _stops.add(_stopInputController.text.trim());
+                    _stopInputController.clear();
+                  });
+                }
+              },
+              child: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        Column(
+          children: _stops
+              .map(
+                (e) => ListTile(
+                  title: Text(e),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => setState(() => _stops.remove(e)),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 
@@ -219,19 +296,20 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
           label: const Text("Choose Start & End Points on Map"),
           onPressed: () => _openMapPicker(context),
         ),
-
         const SizedBox(height: 12),
+
         if (_startPoint != null)
           Text("Start: ${_startPoint!.latitude}, ${_startPoint!.longitude}"),
+
         if (_endPoint != null)
           Text("End: ${_endPoint!.latitude}, ${_endPoint!.longitude}"),
       ],
     );
   }
 
+  // ------------------ MAP PICKER FUNCTION ------------------
   Future<void> _openMapPicker(BuildContext context) async {
-    LatLng? start;
-    LatLng? end;
+    List<LatLng> polyPoints = [];
 
     await showDialog(
       context: context,
@@ -242,60 +320,79 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               contentPadding: EdgeInsets.zero,
               content: SizedBox(
                 height: 400,
-                width: double.maxFinite,
                 child: GoogleMap(
                   initialCameraPosition: const CameraPosition(
-                    target: LatLng(12.9716, 77.5946),
+                    target: LatLng(12.2979, 76.6393),
                     zoom: 13,
                   ),
+
+                  // 👉 Add point on each tap
                   onTap: (pos) {
                     setModalState(() {
-                      if (start == null) {
-                        start = pos;
-                      } else if (end == null) {
-                        end = pos;
-                      } else {
-                        start = pos;
-                        end = null;
-                      }
+                      polyPoints.add(pos);
                     });
                   },
+
                   markers: {
-                    if (start != null)
+                    if (polyPoints.isNotEmpty)
                       Marker(
                         markerId: const MarkerId("start"),
-                        position: start!,
+                        position: polyPoints.first,
                         icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueGreen,
                         ),
                       ),
-                    if (end != null)
+                    if (polyPoints.length > 1)
                       Marker(
                         markerId: const MarkerId("end"),
-                        position: end!,
+                        position: polyPoints.last,
                         icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueRed,
                         ),
                       ),
                   },
+
+                  // 👉 Draw the polyline LIVE
+                  polylines: {
+                    if (polyPoints.length > 1)
+                      Polyline(
+                        polylineId: const PolylineId("route"),
+                        points: polyPoints,
+                        width: 5,
+                        color: Colors.blue,
+                      ),
+                  },
                 ),
               ),
+
               actions: [
                 TextButton(
                   child: const Text("Cancel"),
                   onPressed: () => Navigator.pop(context),
                 ),
-                if (start != null && end != null)
+
+                // Save button only if we have at least start + end
+                if (polyPoints.length > 1)
                   ElevatedButton(
                     child: const Text("Save Route"),
                     onPressed: () {
+                      // Set main route points
                       setState(() {
                         _startPoint = GeoPoint(
-                          start!.latitude,
-                          start!.longitude,
+                          polyPoints.first.latitude,
+                          polyPoints.first.longitude,
                         );
-                        _endPoint = GeoPoint(end!.latitude, end!.longitude);
+                        _endPoint = GeoPoint(
+                          polyPoints.last.latitude,
+                          polyPoints.last.longitude,
+                        );
                       });
+
+                      // Save polyline list in vehicle service
+                      _vehicleService.pendingMapPolyline = polyPoints
+                          .map((e) => {"lat": e.latitude, "lng": e.longitude})
+                          .toList();
+
                       Navigator.pop(context);
                     },
                   ),
@@ -311,7 +408,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   Future<void> _saveVehicle() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_routeType == "map" && (_startPoint == null || _endPoint == null)) {
+    // MAP ROUTE VALIDATION
+    if (_vehicleType != "jcb" &&
+        _routeType == "map" &&
+        (_startPoint == null || _endPoint == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please select route on map"),
@@ -327,7 +427,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
       jobType: _jobType,
       routeType: _routeType,
 
-      manualRoute: _routeType == "manual"
+      // SPECIAL JCB ONLY
+      manualRoute: _vehicleType == "jcb"
+          ? {'stops': _stops}
+          : _routeType == "manual"
           ? {
               'start': _startRouteController.text.trim(),
               'end': _endRouteController.text.trim(),
@@ -338,8 +441,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
       routeStart: _routeType == "map" ? _startPoint : null,
       routeEnd: _routeType == "map" ? _endPoint : null,
 
-      // NEW FIELDS
-      km: double.tryParse(_kmController.text.trim()) ?? 0.0,
+      // KM NOT REQUIRED FOR JCB
+      km: _vehicleType == "jcb"
+          ? 0.0
+          : double.tryParse(_kmController.text.trim()) ?? 0.0,
     );
 
     ScaffoldMessenger.of(context).showSnackBar(

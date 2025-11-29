@@ -29,18 +29,42 @@ class SelectVehiclePage extends StatelessWidget {
               final doc = vehicles[index];
               final data = doc.data() as Map<String, dynamic>;
 
-              String status = (data["status"] ?? "idle").toString();
+              final String type = (data['type'] ?? "").toString();
+              final String number = (data['number'] ?? "").toString();
+              final String jobType = (data['jobType'] ?? "").toString();
+              final String routeType = (data['routeType'] ?? "").toString();
+              final String status = (data['status'] ?? "idle").toString();
 
-              bool inUse = status == "running";
+              final bool inUse = status == "running";
+
+              // -------- Route Label logic (matches Admin UI) --------
+              String routeLabel = "No route set";
+
+              if (type == "jcb" && routeType == "jcb_stops") {
+                final stops = (data['manualRoute']?['stops'] ?? []) as List;
+                routeLabel = "JCB Stops: ${stops.length} stops";
+              } else if (routeType == "manual") {
+                final start = data['manualRoute']?['start'] ?? "";
+                final end = data['manualRoute']?['end'] ?? "";
+                routeLabel = "$start → $end";
+              } else if (routeType == "map") {
+                routeLabel = "Map route selected";
+              }
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 elevation: 2,
                 child: ListTile(
-                  title: Text("${data['type']} - ${data['number']}"),
-                  subtitle: Text("Route Type: ${data['routeType']}"),
+                  title: Text("${type.toUpperCase()} - $number"),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Work: ${jobType.toUpperCase()}"),
+                      Text("Route: $routeLabel"),
+                    ],
+                  ),
 
-                  // BADGE ON RIGHT SIDE
+                  // BADGE
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,

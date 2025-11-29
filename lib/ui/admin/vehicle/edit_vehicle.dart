@@ -23,15 +23,15 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
   final VehicleService _vehicleService = VehicleService();
 
   late TextEditingController _numberController;
-  late TextEditingController _startController;
-  late TextEditingController _endController;
+  late TextEditingController _startRouteController;
+  late TextEditingController _endRouteController;
   late TextEditingController _stopInputController;
+
+  List<String> _stops = [];
 
   String _vehicleType = "auto";
   String _jobType = "collection";
   String _routeType = "manual";
-
-  List<String> _stops = [];
 
   GeoPoint? _startPoint;
   GeoPoint? _endPoint;
@@ -47,10 +47,11 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     _routeType = v['routeType'] ?? 'manual';
 
     _numberController = TextEditingController(text: v['number']);
-    _startController = TextEditingController(
+
+    _startRouteController = TextEditingController(
       text: v['manualRoute']?['start'] ?? "",
     );
-    _endController = TextEditingController(
+    _endRouteController = TextEditingController(
       text: v['manualRoute']?['end'] ?? "",
     );
     _stopInputController = TextEditingController();
@@ -81,23 +82,37 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
           key: _formKey,
           child: Column(
             children: [
-              _buildVehicleTypeField(),
-              const SizedBox(height: 12),
+              // VEHICLE TYPE
+              _buildVehicleType(),
 
+              const SizedBox(height: 16),
+
+              // JOB TYPE (Tractor/JCB only)
               if (_vehicleType == "tractor" || _vehicleType == "jcb")
-                _buildJobTypeField(),
+                _buildJobType(),
 
-              const SizedBox(height: 12),
-              _buildVehicleNumberField(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-              _buildRouteTypeField(),
-              const SizedBox(height: 12),
+              // VEHICLE NUMBER
+              _buildVehicleNumber(),
 
-              if (_routeType == "manual") _buildManualRouteUI(),
-              if (_routeType == "map") _buildMapRouteUI(),
+              const SizedBox(height: 16),
 
-              const SizedBox(height: 20),
+              // ROUTE TYPE (Not shown for JCB)
+              if (_vehicleType != "jcb") _buildRouteType(),
+
+              const SizedBox(height: 16),
+
+              // ROUTE UI
+              if (_vehicleType != "jcb")
+                (_routeType == "manual")
+                    ? _buildManualRouteUI()
+                    : _buildMapRouteUI(),
+
+              if (_vehicleType == "jcb") _buildJCBStopsUI(),
+
+              const SizedBox(height: 28),
+
               _buildSaveButton(),
             ],
           ),
@@ -106,41 +121,48 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     );
   }
 
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _saveVehicle, // <-- FIXED (Now it calls _saveVehicle)
-        icon: const Icon(Icons.save, color: Colors.white),
-        label: const Text(
-          "Save Changes",
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.teal,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
+  // ---------------- FIELD WIDGETS -------------------
 
-  // ------------------ FIELD WIDGETS -------------------
-
-  Widget _buildVehicleTypeField() {
+  Widget _buildVehicleType() {
     return DropdownButtonFormField(
       value: _vehicleType,
       items: ["auto", "tipper", "tractor", "jcb"]
           .map((v) => DropdownMenuItem(value: v, child: Text(v.toUpperCase())))
           .toList(),
-      onChanged: (v) => setState(() => _vehicleType = v!),
-      decoration: _input("Vehicle Type", Icons.car_rental),
+      onChanged: (v) {
+        setState(() {
+          _vehicleType = v!;
+          if (v == "auto" || v == "tipper") {
+            _jobType = "collection"; // auto/tipper always collection
+          }
+        });
+      },
+      decoration: _input("Vehicle Type", Icons.directions_car),
     );
   }
 
-  Widget _buildJobTypeField() {
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _saveVehicle,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          "UPDATE VEHICLE",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobType() {
     return DropdownButtonFormField(
       value: _jobType,
       items: const [
@@ -152,7 +174,7 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     );
   }
 
-  Widget _buildVehicleNumberField() {
+  Widget _buildVehicleNumber() {
     return TextFormField(
       controller: _numberController,
       decoration: _input("Vehicle Number", Icons.confirmation_number),
@@ -160,7 +182,7 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     );
   }
 
-  Widget _buildRouteTypeField() {
+  Widget _buildRouteType() {
     return DropdownButtonFormField(
       value: _routeType,
       items: const [
@@ -168,24 +190,79 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
         DropdownMenuItem(value: "map", child: Text("Map Route")),
       ],
       onChanged: (v) => setState(() => _routeType = v!),
-      decoration: _input("Route Type", Icons.route),
+      decoration: _input("Route Type", Icons.alt_route),
     );
   }
 
-  // ------------------ MANUAL ROUTE -------------------
+  // ---------------- MANUAL ROUTE UI -------------------
 
   Widget _buildManualRouteUI() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _startController,
-          decoration: _input("Start", Icons.flag),
+          controller: _startRouteController,
+          decoration: _input("Start Point (From)", Icons.flag),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
 
         TextFormField(
-          controller: _endController,
-          decoration: _input("End", Icons.place),
+          controller: _endRouteController,
+          decoration: _input("End Point (To)", Icons.location_on),
+        ),
+
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _stopInputController,
+                decoration: const InputDecoration(
+                  hintText: "Add stop",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                if (_stopInputController.text.isNotEmpty) {
+                  setState(() {
+                    _stops.add(_stopInputController.text);
+                    _stopInputController.clear();
+                  });
+                }
+              },
+              child: const Icon(Icons.add),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        ..._stops.map(
+          (s) => ListTile(
+            title: Text(s),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => setState(() => _stops.remove(s)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------- JCB STOPS ONLY -------------------
+
+  Widget _buildJCBStopsUI() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Stops (JCB)",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
 
@@ -203,27 +280,26 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
             const SizedBox(width: 8),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  _stops.add(_stopInputController.text);
-                  _stopInputController.clear();
-                });
+                if (_stopInputController.text.isNotEmpty) {
+                  setState(() {
+                    _stops.add(_stopInputController.text);
+                    _stopInputController.clear();
+                  });
+                }
               },
               child: const Icon(Icons.add),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 12),
 
         ..._stops.map(
           (s) => ListTile(
             title: Text(s),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                setState(() {
-                  _stops.remove(s);
-                });
-              },
+              onPressed: () => setState(() => _stops.remove(s)),
             ),
           ),
         ),
@@ -231,7 +307,7 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     );
   }
 
-  // ------------------ MAP ROUTE -------------------
+  // ---------------- MAP ROUTE UI -------------------
 
   Widget _buildMapRouteUI() {
     return Column(
@@ -239,18 +315,20 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
       children: [
         ElevatedButton.icon(
           icon: const Icon(Icons.map),
-          label: const Text("Pick Route"),
-          onPressed: () => _openMapRoutePicker(context),
+          label: const Text("Pick Route on Map"),
+          onPressed: () => _openMapPicker(context),
         ),
+
         if (_startPoint != null)
           Text("Start: ${_startPoint!.latitude}, ${_startPoint!.longitude}"),
+
         if (_endPoint != null)
           Text("End: ${_endPoint!.latitude}, ${_endPoint!.longitude}"),
       ],
     );
   }
 
-  Future<void> _openMapRoutePicker(BuildContext context) async {
+  Future<void> _openMapPicker(BuildContext context) async {
     LatLng? start;
     LatLng? end;
 
@@ -317,7 +395,7 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
                       });
                       Navigator.pop(context);
                     },
-                    child: const Text("Save"),
+                    child: const Text("Save Route"),
                   ),
               ],
             );
@@ -327,7 +405,7 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     );
   }
 
-  // ------------------ SAVE VEHICLE -------------------
+  // ---------------- SAVE VEHICLE -------------------
 
   Future<void> _saveVehicle() async {
     if (!_formKey.currentState!.validate()) return;
@@ -339,26 +417,39 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
           'type': _vehicleType,
           'number': _numberController.text.trim(),
           'jobType': _jobType,
-          'routeType': _routeType,
-          'manualRoute': _routeType == "manual"
-              ? {
-                  'start': _startController.text.trim(),
-                  'end': _endController.text.trim(),
-                  'stops': _stops,
-                }
-              : null,
-          'routeStart': _routeType == "map" ? _startPoint : null,
-          'routeEnd': _routeType == "map" ? _endPoint : null,
+
+          // For JCB → save only stops
+          if (_vehicleType == "jcb") ...{
+            'routeType': 'manual',
+            'manualRoute': {'stops': _stops},
+            'routeStart': null,
+            'routeEnd': null,
+          }
+          // For normal vehicles
+          else ...{
+            'routeType': _routeType,
+            'manualRoute': _routeType == "manual"
+                ? {
+                    'start': _startRouteController.text.trim(),
+                    'end': _endRouteController.text.trim(),
+                    'stops': _stops,
+                  }
+                : null,
+            'routeStart': _routeType == "map" ? _startPoint : null,
+            'routeEnd': _routeType == "map" ? _endPoint : null,
+          },
+
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Vehicle updated")));
+
     Navigator.pop(context);
   }
 
-  // ------------------ DELETE VEHICLE -------------------
+  // ---------------- DELETE VEHICLE -------------------
 
   Future<void> _deleteVehicle() async {
     await _vehicleService.deleteVehicle(widget.vehicleId);
@@ -366,11 +457,10 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Vehicle deleted")));
-
     Navigator.pop(context);
   }
 
-  // ------------------ Input Decoration -------------------
+  // ---------------- INPUT STYLE -------------------
 
   InputDecoration _input(String label, IconData icon) {
     return InputDecoration(

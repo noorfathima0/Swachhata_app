@@ -28,6 +28,14 @@ class SwachhataApp extends StatelessWidget {
     return snap.data()?['role'];
   }
 
+  Future<bool> _isDriver(String uid) async {
+    final snap = await FirebaseFirestore.instance
+        .collection('drivers')
+        .doc(uid)
+        .get();
+    return snap.exists;
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -59,22 +67,42 @@ class SwachhataApp extends StatelessWidget {
                     body: Center(child: CircularProgressIndicator()),
                   );
                 }
+
                 if (!snapshot.hasData) return const LoginPage();
+
                 final user = snapshot.data!;
 
-                return FutureBuilder<String?>(
-                  future: _getRole(user.uid),
+                return FutureBuilder(
+                  future: Future.wait([
+                    _getRole(user.uid), // admin / user
+                    _isDriver(user.uid), // driver?
+                  ]),
                   builder: (context, snap) {
                     if (!snap.hasData) {
                       return const Scaffold(
                         body: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    return NavigatorPage(
-                      route: snap.data == 'admin'
-                          ? AppRouter.adminDashboard
-                          : AppRouter.userDashboard,
-                    );
+
+                    final role = snap.data![0] as String?;
+                    final isDriver = snap.data![1] as bool;
+
+                    // ⭐ DRIVER REDIRECT
+                    if (isDriver) {
+                      return const NavigatorPage(
+                        route: AppRouter.driverDashboard,
+                      );
+                    }
+
+                    // ⭐ ADMIN REDIRECT
+                    if (role == 'admin') {
+                      return const NavigatorPage(
+                        route: AppRouter.adminDashboard,
+                      );
+                    }
+
+                    // ⭐ NORMAL USER
+                    return const NavigatorPage(route: AppRouter.userDashboard);
                   },
                 );
               },

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import 'forgot_password_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:swachhata_app/services/driver_local_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,6 +44,11 @@ class _LoginPageState extends State<LoginPage> {
         if (!driverSnap.exists) {
           throw "Driver account not found in database.";
         }
+
+        final driverData = driverSnap.data()!;
+
+        // ✅ SAVE DRIVER LOCALLY
+        await DriverLocalStorage.saveDriver(driverData);
 
         // Redirect to driver dashboard
         Navigator.pushReplacementNamed(context, '/driver-dashboard');

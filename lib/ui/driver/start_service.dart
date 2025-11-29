@@ -19,6 +19,7 @@ class StartServicePage extends StatelessWidget {
         .update({
           "status": "running",
           "serviceStartedAt": FieldValue.serverTimestamp(),
+          "service": null, // Reset previous service data
         });
   }
 

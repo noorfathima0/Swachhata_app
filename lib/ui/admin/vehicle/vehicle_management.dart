@@ -53,10 +53,8 @@ class AdminVehicleManagementPage extends StatelessWidget {
         elevation: 1,
 
         actions: [
-          // 🔥 NEW — FULL VEHICLE REPORT BUTTON
           IconButton(
             icon: const Icon(Icons.table_chart),
-            tooltip: "View Vehicle Daily Reports",
             onPressed: () {
               Navigator.push(
                 context,
@@ -64,11 +62,8 @@ class AdminVehicleManagementPage extends StatelessWidget {
               );
             },
           ),
-
-          const SizedBox(width: 6),
           IconButton(
             icon: const Icon(Icons.map),
-            tooltip: "Live Vehicle Tracking",
             onPressed: () {
               Navigator.push(
                 context,
@@ -90,36 +85,11 @@ class AdminVehicleManagementPage extends StatelessWidget {
             );
           }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: TextStyle(color: Colors.red[700]),
-              ),
-            );
-          }
-
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.local_shipping_outlined,
-                    size: 64,
-                    color: Colors.teal[300],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No vehicles added yet.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tap + to add a new vehicle.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
+            return const Center(
+              child: Text(
+                'No vehicles added yet.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
           }
@@ -133,12 +103,28 @@ class AdminVehicleManagementPage extends StatelessWidget {
               final doc = vehicles[index];
               final data = doc.data() as Map<String, dynamic>;
 
+              final status = data['status'] ?? 'idle';
               final type = data['type'] ?? '';
               final number = data['number'] ?? '';
               final jobType = data['jobType'] ?? '';
-              final status = data['status'] ?? 'idle';
               final routeType = data['routeType'] ?? '';
               final manualRoute = (data['manualRoute'] ?? '').toString();
+
+              // -------------------------
+              // 🔥 AUTO RESET COMPLETED TO IDLE AFTER 12 HOURS
+              // -------------------------
+              if (status == "completed" && data['completedAt'] != null) {
+                final completedAt = (data['completedAt'] as Timestamp).toDate();
+                final now = DateTime.now();
+                final difference = now.difference(completedAt);
+
+                if (difference.inHours >= 12) {
+                  FirebaseFirestore.instance
+                      .collection("vehicles")
+                      .doc(doc.id)
+                      .update({"status": "idle"});
+                }
+              }
 
               String routeLabel;
               if (routeType == 'manual' && manualRoute.isNotEmpty) {
@@ -201,7 +187,7 @@ class AdminVehicleManagementPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: _statusColor(status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _statusColor(status), width: 1),
+                      border: Border.all(color: _statusColor(status)),
                     ),
                     child: Text(
                       status.toUpperCase(),
