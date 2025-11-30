@@ -12,6 +12,7 @@ import 'user_management/user_management.dart';
 import 'profile/profile.dart';
 import 'vehicle/vehicle_management.dart';
 import 'driver/driver_management.dart';
+import 'reports/dashboard.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -58,6 +59,12 @@ class AdminDashboard extends StatelessWidget {
         icon: Icons.local_shipping_outlined,
         color: Colors.brown.shade700,
         destination: const AdminDriverManagementPage(),
+      ),
+      _AdminDashboardItem(
+        title: "Reports Dashboard",
+        icon: Icons.analytics_outlined,
+        color: Colors.green.shade700,
+        destination: const AdminReportsDashboard(),
       ),
     ];
 
