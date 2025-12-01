@@ -54,98 +54,104 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat("dd MMM yyyy").format(selectedDate);
+    final formatted = DateFormat("dd MMM yyyy").format(selectedDate);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+
       appBar: AppBar(
-        title: const Text("Daily Vehicle Report"),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          "Daily Vehicle Report",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
+        leading: Container(
+          margin: const EdgeInsets.only(left: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
+            color: Colors.grey.shade700,
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: _pickDate,
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.calendar_month, color: Colors.white),
+              onPressed: _pickDate,
+            ),
           ),
         ],
       ),
+
       body: loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF2C5F2D)),
+            )
           : vehicles.isEmpty
-          ? const Center(child: Text("No vehicles found"))
+          ? _emptyState()
           : ListView(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(20),
               children: [
-                Text(
-                  "Report for $formattedDate",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 14),
+                _headerCard(formatted),
 
-                // ============================================
-                //     🔵 TOTAL COLLECTION EFFICIENCY
-                // ============================================
-                _buildTotalEfficiencyCard(
+                const SizedBox(height: 20),
+
+                // COLLECTION SUMMARY
+                _metricCard(
+                  icon: Icons.recycling_rounded,
                   title: "Total Collection Efficiency",
+                  color: Colors.blueAccent,
                   percent: _calculateTotalCollectionEfficiency(),
-                  color: Colors.blueGrey,
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
 
-                // ---------------- COLLECTION SECTION ----------------
-                const Text(
-                  "Collection Vehicles",
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueGrey,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                _sectionTitle("Collection Vehicles", Colors.blueAccent),
+
+                const SizedBox(height: 12),
 
                 ...vehicles.map((v) {
                   final data = v.data() as Map<String, dynamic>;
-
-                  if (data["jobType"] != "collection") {
-                    return const SizedBox();
-                  }
-
+                  if (data["jobType"] != "collection") return const SizedBox();
                   return _buildCollectionCard(data);
                 }),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: 30),
 
-                // ============================================
-                //     🟠 TOTAL SANITATION EFFICIENCY
-                // ============================================
-                _buildTotalEfficiencyCard(
+                // SANITATION SUMMARY
+                _metricCard(
+                  icon: Icons.cleaning_services_rounded,
                   title: "Total Sanitation Efficiency",
+                  color: Colors.deepOrangeAccent,
                   percent: _calculateTotalSanitationEfficiency(),
-                  color: Colors.deepOrange,
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
 
-                // ---------------- SANITATION SECTION ----------------
-                const Text(
-                  "Sanitation Vehicles",
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                _sectionTitle("Sanitation Vehicles", Colors.deepOrange),
+
+                const SizedBox(height: 12),
 
                 ...vehicles.map((v) {
                   final data = v.data() as Map<String, dynamic>;
-
-                  if (data["jobType"] != "sanitation") {
-                    return const SizedBox();
-                  }
+                  if (data["jobType"] != "sanitation") return const SizedBox();
 
                   if (data["type"] == "jcb") {
                     return _buildJcbCard(data);
@@ -158,9 +164,10 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     );
   }
 
-  // =====================================================
-  //     🔵 TOTAL COLLECTION EFFICIENCY CALCULATION
-  // =====================================================
+  // ---------------------------------------------------------
+  //   CALCULATIONS
+  // ---------------------------------------------------------
+
   double _calculateTotalCollectionEfficiency() {
     double total = 0;
     int count = 0;
@@ -172,16 +179,15 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
       final service = data["service"];
       if (service == null) continue;
 
-      final startTs = service["startTime"];
-      if (startTs is! Timestamp) continue;
-      if (!_isSameDate(startTs, selectedDate)) continue;
+      final start = service["startTime"];
+      if (start is! Timestamp) continue;
+      if (!_isSameDate(start, selectedDate)) continue;
 
-      final allottedKm = (data["km"] ?? 0.0).toDouble();
-      final traveledKm = (service["distanceKm"] ?? 0.0).toDouble();
+      final km = (data["km"] ?? 0.0).toDouble();
+      final traveled = (service["distanceKm"] ?? 0.0).toDouble();
 
-      if (allottedKm > 0) {
-        final percent = (traveledKm / allottedKm) * 100;
-        total += percent;
+      if (km > 0) {
+        total += (traveled / km) * 100;
         count++;
       }
     }
@@ -189,39 +195,35 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     return count == 0 ? 0 : total / count;
   }
 
-  // =====================================================
-  //     🟠 TOTAL SANITATION EFFICIENCY CALCULATION
-  // =====================================================
   double _calculateTotalSanitationEfficiency() {
     double total = 0;
     int count = 0;
 
     for (var v in vehicles) {
       final data = v.data() as Map<String, dynamic>;
-
       if (data["jobType"] != "sanitation") continue;
 
       final service = data["service"];
       if (service == null) continue;
 
-      final startTs = service["startTime"];
-      if (startTs is! Timestamp) continue;
-      if (!_isSameDate(startTs, selectedDate)) continue;
+      final start = service["startTime"];
+      if (start is! Timestamp) continue;
+      if (!_isSameDate(start, selectedDate)) continue;
 
       if (data["type"] == "jcb") {
-        // JCB — stop-based
-        final stops = (data["manualRoute"]?["stops"] ?? []) as List;
-        final completed = (service["completedStops"] ?? []) as List;
+        final stops = List<String>.from(data["manualRoute"]?["stops"] ?? []);
+        final done = List<String>.from(service["completedStops"] ?? []);
+
         if (stops.isNotEmpty) {
-          total += (completed.length / stops.length) * 100;
+          total += (done.length / stops.length) * 100;
           count++;
         }
       } else {
-        // Tractor — KM-based
-        final allottedKm = (data["km"] ?? 0.0).toDouble();
-        final traveledKm = (service["distanceKm"] ?? 0.0).toDouble();
-        if (allottedKm > 0) {
-          total += (traveledKm / allottedKm) * 100;
+        final km = (data["km"] ?? 0.0).toDouble();
+        final traveled = (service["distanceKm"] ?? 0.0).toDouble();
+
+        if (km > 0) {
+          total += (traveled / km) * 100;
           count++;
         }
       }
@@ -230,203 +232,24 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     return count == 0 ? 0 : total / count;
   }
 
-  // =====================================================
-  //          TOTAL EFFICIENCY CARD UI
-  // =====================================================
-  Widget _buildTotalEfficiencyCard({
-    required String title,
-    required double percent,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 3,
-      color: color.withOpacity(0.15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "${percent.toStringAsFixed(1)}%",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ---------------------------------------------------------
+  //   UI COMPONENTS (FULLY THEMED)
+  // ---------------------------------------------------------
 
-  // ---------------- COLLECTION CARD ----------------
-  Widget _buildCollectionCard(Map<String, dynamic> data) {
-    final type = (data["type"] ?? "Unknown").toString();
-    final number = (data["number"] ?? "Unknown").toString();
-    final status = (data["status"] ?? "idle").toString();
-
-    final allottedKm = (data["km"] ?? 0.0).toDouble();
-
-    final service = data["service"];
-    if (service == null) {
-      return _noReportCard(type, number, status);
-    }
-
-    final Timestamp? startTs = service["startTime"] is Timestamp
-        ? service["startTime"]
-        : null;
-    final Timestamp? endTs = service["endTime"] is Timestamp
-        ? service["endTime"]
-        : null;
-
-    if (startTs == null || !_isSameDate(startTs, selectedDate)) {
-      return const SizedBox();
-    }
-
-    final traveledKm = (service["distanceKm"] ?? 0.0).toDouble();
-    final timeMinutes = (service["durationMinutes"] ?? 0).toInt();
-
-    final percent = allottedKm > 0 ? (traveledKm / allottedKm) * 100 : 0.0;
-
-    return _vehicleCard(
-      title: "$type - $number",
-      status: status,
-      tiles: [
-        _infoTile("Allotted KM", allottedKm.toStringAsFixed(2)),
-        _infoTile("Travelled", "${traveledKm.toStringAsFixed(2)} KM"),
-        _progressBar(percent),
-        _infoTile("Time", "$timeMinutes min"),
-        _infoTile(
-          "Start",
-          startTs != null
-              ? DateFormat("hh:mm a").format(startTs.toDate())
-              : "-",
-        ),
-        _infoTile(
-          "End",
-          endTs != null ? DateFormat("hh:mm a").format(endTs.toDate()) : "-",
-        ),
-      ],
-    );
-  }
-
-  // ---------------- JCB REPORT CARD ----------------
-  Widget _buildJcbCard(Map<String, dynamic> data) {
-    final type = (data["type"] ?? "Unknown").toString();
-    final number = (data["number"] ?? "Unknown").toString();
-    final status = (data["status"] ?? "idle").toString();
-
-    final service = data["service"];
-    if (service == null) return _noReportCard(type, number, status);
-
-    final Timestamp? startTs = service["startTime"] is Timestamp
-        ? service["startTime"]
-        : null;
-    final Timestamp? endTs = service["endTime"] is Timestamp
-        ? service["endTime"]
-        : null;
-
-    if (startTs == null || !_isSameDate(startTs, selectedDate)) {
-      return const SizedBox();
-    }
-
-    final stops = (data["manualRoute"]?["stops"] ?? []) is List
-        ? data["manualRoute"]["stops"].cast<String>()
-        : <String>[];
-    final completed = (service["completedStops"] ?? []) is List
-        ? service["completedStops"].cast<String>()
-        : <String>[];
-
-    final total = stops.length;
-    final done = completed.length;
-    final percent = total > 0 ? (done / total) * 100 : 0.0;
-
-    return _vehicleCard(
-      title: "$type - $number",
-      status: status,
-      tiles: [
-        _infoTile("Total Stops", total.toString()),
-        _infoTile("Completed", done.toString()),
-        _infoTile("Pending", (total - done).toString()),
-        _progressBar(percent),
-        _infoTile(
-          "Start",
-          startTs != null
-              ? DateFormat("hh:mm a").format(startTs.toDate())
-              : "-",
-        ),
-        _infoTile(
-          "End",
-          endTs != null ? DateFormat("hh:mm a").format(endTs.toDate()) : "-",
-        ),
-      ],
-    );
-  }
-
-  // ---------------- REUSABLE CARD UI ----------------
-  Widget _vehicleCard({
-    required String title,
-    required String status,
-    required List<Widget> tiles,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Wrap(spacing: 20, runSpacing: 10, children: tiles),
-            const SizedBox(height: 12),
-            _statusBadge(status),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _progressBar(double percent) {
-    Color percentColor = percent >= 80
-        ? Colors.green
-        : percent >= 40
-        ? Colors.orange
-        : Colors.red;
-
-    return SizedBox(
-      width: 140,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _headerCard(String date) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: _cardDecoration(),
+      child: Row(
         children: [
+          _iconBubble(Icons.calendar_today_rounded, const Color(0xFF2C5F2D)),
+          const SizedBox(width: 16),
           Text(
-            "Completed: ${percent.toStringAsFixed(1)}%",
-            style: TextStyle(color: percentColor, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: percent / 100,
-              backgroundColor: Colors.grey.shade300,
-              color: percentColor,
-              minHeight: 8,
+            "Report for $date",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
             ),
           ),
         ],
@@ -434,38 +257,213 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
     );
   }
 
-  // ---------------- STATUS BADGE ----------------
+  Widget _metricCard({
+    required String title,
+    required double percent,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _iconBubble(icon, color),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            "${percent.toStringAsFixed(1)}%",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, Color color) {
+    return Row(
+      children: [
+        _iconBubble(Icons.directions_bus_rounded, color),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollectionCard(Map<String, dynamic> data) {
+    final type = data["type"] ?? "-";
+    final number = data["number"] ?? "-";
+    final status = data["status"] ?? "idle";
+
+    final service = data["service"];
+
+    if (service == null) {
+      return _noReportCard(type, number, status);
+    }
+
+    final Timestamp? start = service["startTime"];
+    final Timestamp? end = service["endTime"];
+
+    if (start == null || !_isSameDate(start, selectedDate)) {
+      return const SizedBox();
+    }
+
+    final km = (data["km"] ?? 0.0).toDouble();
+    final traveled = (service["distanceKm"] ?? 0.0).toDouble();
+    final minutes = (service["durationMinutes"] ?? 0).toInt();
+
+    final percent = km > 0 ? (traveled / km) * 100 : 0.0;
+
+    return _vehicleCard("$type - $number", status, [
+      _infoTile("Allotted", "$km KM"),
+      _infoTile("Travelled", "${traveled.toStringAsFixed(2)} KM"),
+      _progressBar(percent),
+      _infoTile("Time", "$minutes min"),
+      _infoTile("Start", DateFormat("hh:mm a").format(start.toDate())),
+      _infoTile(
+        "End",
+        end != null ? DateFormat("hh:mm a").format(end.toDate()) : "-",
+      ),
+    ]);
+  }
+
+  Widget _buildJcbCard(Map<String, dynamic> data) {
+    final type = data["type"];
+    final number = data["number"];
+    final status = data["status"];
+
+    final service = data["service"];
+
+    if (service == null) return _noReportCard(type, number, status);
+
+    final Timestamp? start = service["startTime"];
+    final Timestamp? end = service["endTime"];
+
+    if (start == null || !_isSameDate(start, selectedDate)) {
+      return const SizedBox();
+    }
+
+    final stops = List<String>.from(data["manualRoute"]?["stops"] ?? []);
+    final done = List<String>.from(service["completedStops"] ?? []);
+
+    final percent = stops.isEmpty ? 0.0 : (done.length / stops.length) * 100;
+
+    return _vehicleCard("$type - $number", status, [
+      _infoTile("Stops", "${stops.length}"),
+      _infoTile("Completed", "${done.length}"),
+      _infoTile("Pending", "${stops.length - done.length}"),
+      _progressBar(percent),
+      _infoTile("Start", DateFormat("hh:mm a").format(start.toDate())),
+      _infoTile(
+        "End",
+        end != null ? DateFormat("hh:mm a").format(end.toDate()) : "-",
+      ),
+    ]);
+  }
+
+  Widget _vehicleCard(String title, String status, List<Widget> tiles) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(spacing: 20, runSpacing: 16, children: tiles),
+          const SizedBox(height: 16),
+          _statusBadge(status),
+        ],
+      ),
+    );
+  }
+
+  Widget _progressBar(double percent) {
+    final color = percent >= 80
+        ? Colors.green
+        : percent >= 40
+        ? Colors.orange
+        : Colors.red;
+
+    return SizedBox(
+      width: 150,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Completed ${percent.toStringAsFixed(1)}%",
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LinearProgressIndicator(
+              value: percent / 100,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade300,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _statusBadge(String status) {
-    Color color = Colors.grey;
-    if (status == "completed") color = Colors.green;
-    if (status == "running") color = Colors.orange;
+    Color c = Colors.grey;
+    if (status == "running") c = Colors.orange;
+    if (status == "completed") c = Colors.green;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(.2),
-        borderRadius: BorderRadius.circular(8),
+        color: c.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+        style: TextStyle(color: c, fontWeight: FontWeight.w700, fontSize: 12),
       ),
     );
   }
 
-  // ---------------- NO REPORT CARD ----------------
-  Widget _noReportCard(String type, String number, String status) {
-    return _vehicleCard(
-      title: "$type - $number",
-      status: status,
-      tiles: [_infoTile("No Report", "-")],
-    );
-  }
-
-  // ---------------- SMALL TILE ----------------
   Widget _infoTile(String title, String value) {
     return SizedBox(
-      width: 110,
+      width: 120,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -474,12 +472,108 @@ class _AdminDailyReportPageState extends State<AdminDailyReportPage> {
             style: const TextStyle(
               fontSize: 12,
               color: Colors.black54,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _iconBubble(IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: color, size: 20),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    );
+  }
+
+  Widget _noReportCard(String type, String number, String status) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$type - $number",
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "No report available",
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey.shade600,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _statusBadge(status),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.report_gmailerrorred_rounded,
+              size: 70,
+              color: Colors.grey.shade300,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            "No vehicles found",
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

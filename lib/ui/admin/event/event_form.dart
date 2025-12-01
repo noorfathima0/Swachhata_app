@@ -37,15 +37,45 @@ class _EventFormPageState extends State<EventFormPage> {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage();
     if (picked.isNotEmpty) {
-      setState(() {
-        _mediaFiles.addAll(picked.map((e) => File(e.path)));
-      });
+      final newFiles = picked.map((e) => File(e.path)).toList();
+      if (_mediaFiles.length + newFiles.length > 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade600,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    "You can upload up to 5 images only",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        setState(() => _mediaFiles.addAll(newFiles));
+      }
     }
   }
 
   // 📍 Get current location
   Future<void> _getCurrentLocation() async {
     try {
+      setState(() => _isSaving = true);
       final location = Location();
       final locData = await location.getLocation();
       final newPosition = LatLng(locData.latitude!, locData.longitude!);
@@ -53,9 +83,35 @@ class _EventFormPageState extends State<EventFormPage> {
       await _getAddressFromLatLng(newPosition);
       _moveCamera(newPosition);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to get location: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Failed to get location: $e",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      setState(() => _isSaving = false);
     }
   }
 
@@ -80,9 +136,33 @@ class _EventFormPageState extends State<EventFormPage> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Failed to fetch address")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Failed to fetch address",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -91,11 +171,95 @@ class _EventFormPageState extends State<EventFormPage> {
 
   // 💾 Save event
   Future<void> _saveEvent() async {
-    if (!_formKey.currentState!.validate() ||
-        _eventDate == null ||
-        _pickedLocation == null) {
+    if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all required fields")),
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Please fill all required fields",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_eventDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Please select event date and time",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_pickedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Please select event location on map",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -122,14 +286,62 @@ class _EventFormPageState extends State<EventFormPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Event created successfully!")),
+          SnackBar(
+            content: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xFF27AE60),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    "Event created successfully!",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to create event: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Failed to create event: $e",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -140,16 +352,41 @@ class _EventFormPageState extends State<EventFormPage> {
     showDialog(
       context: context,
       builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black.withOpacity(0.85),
         insetPadding: const EdgeInsets.all(16),
-        child: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: InteractiveViewer(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.file(image, fit: BoxFit.contain),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: Center(
+                child: Image.file(
+                  image,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.broken_image,
+                    color: Colors.white54,
+                    size: 100,
+                  ),
+                ),
+              ),
             ),
-          ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -157,252 +394,537 @@ class _EventFormPageState extends State<EventFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    const teal = Colors.teal;
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text("Create Event"),
-        backgroundColor: teal.shade600,
-        elevation: 2,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          "Create New Event",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      labelText: "Event Title",
-                      prefixIcon: const Icon(Icons.title, color: teal),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? "Title required" : null,
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 📝 Form Section
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _descController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: "Description",
-                      prefixIcon: const Icon(Icons.description, color: teal),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _locationController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: "Location",
-                      prefixIcon: const Icon(
-                        Icons.location_on_outlined,
-                        color: teal,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.my_location, color: teal),
-                        onPressed: _getCurrentLocation,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      height: 230,
-                      child: GoogleMap(
-                        initialCameraPosition: const CameraPosition(
-                          target: LatLng(13.2563, 76.4775),
-                          zoom: 12,
+                ],
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2C5F2D).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.edit_rounded,
+                            color: Color(0xFF2C5F2D),
+                            size: 20,
+                          ),
                         ),
-                        onMapCreated: (controller) =>
-                            _mapController = controller,
-                        markers: _locationMarker != null
-                            ? {_locationMarker!}
-                            : <Marker>{},
-                        onTap: (pos) async {
-                          setState(() => _pickedLocation = pos);
-                          await _getAddressFromLatLng(pos);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: teal.shade600,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                          horizontal: 20,
+                        SizedBox(width: 12),
+                        Text(
+                          "Event Details",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade800,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime(2100),
-                        );
-                        if (date != null) {
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.now(),
-                          );
-                          if (time != null) {
-                            setState(() {
-                              _eventDate = DateTime(
-                                date.year,
-                                date.month,
-                                date.day,
-                                time.hour,
-                                time.minute,
-                              );
-                            });
-                          }
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.calendar_today,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        _eventDate == null
-                            ? "Select Date & Time"
-                            : DateFormat(
-                                'dd MMM yyyy, hh:mm a',
-                              ).format(_eventDate!),
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "Images",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: teal.shade700,
-                      fontSize: 16,
+                    SizedBox(height: 20),
+
+                    _buildTextField(
+                      controller: _titleController,
+                      label: "Event Title",
+                      icon: Icons.title_rounded,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? "Title required" : null,
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ..._mediaFiles.map(
-                        (f) => Stack(
-                          alignment: Alignment.topRight,
+                    SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: _descController,
+                      label: "Description",
+                      icon: Icons.description_rounded,
+                      maxLines: 3,
+                    ),
+                    SizedBox(height: 20),
+
+                    // 📍 Location Section
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            GestureDetector(
-                              onTap: () => _showFullImage(f),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  f,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
                             Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.black45,
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
                                 shape: BoxShape.circle,
                               ),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _mediaFiles.remove(f)),
+                              child: Icon(
+                                Icons.location_on_rounded,
+                                color: Colors.red.shade600,
+                                size: 20,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Location",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade800,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      InkWell(
-                        onTap: _pickMedia,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: teal.shade300,
-                              width: 1.5,
+                        SizedBox(height: 12),
+                        TextFormField(
+                          controller: _locationController,
+                          readOnly: true,
+                          style: TextStyle(
+                            color: Colors.grey.shade800,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          decoration: InputDecoration(
+                            hintText:
+                                "Select location on map or use current location",
+                            hintStyle: TextStyle(color: Colors.grey.shade500),
+                            prefixIcon: Container(
+                              padding: EdgeInsets.all(12),
+                              margin: EdgeInsets.only(right: 12),
+                              child: Icon(
+                                Icons.place_rounded,
+                                color: Color(0xFF2C5F2D),
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(10),
+                            suffixIcon: Container(
+                              margin: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2C5F2D).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.my_location_rounded,
+                                  color: Color(0xFF2C5F2D),
+                                  size: 20,
+                                ),
+                                onPressed: _getCurrentLocation,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Color(0xFF2C5F2D),
+                                width: 2,
+                              ),
+                            ),
+                            contentPadding: EdgeInsets.all(16),
                           ),
-                          child: Icon(
-                            Icons.add_a_photo,
-                            color: teal.shade500,
-                            size: 32,
+                        ),
+                        SizedBox(height: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            height: 250,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade200),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: LatLng(13.2563, 76.4775),
+                                zoom: 12,
+                              ),
+                              onMapCreated: (controller) =>
+                                  _mapController = controller,
+                              markers: _locationMarker != null
+                                  ? {_locationMarker!}
+                                  : <Marker>{},
+                              onTap: (pos) async {
+                                setState(() => _pickedLocation = pos);
+                                await _getAddressFromLatLng(pos);
+                              },
+                            ),
                           ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Tap on the map to select location",
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+
+                    // 📅 Date & Time Section
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.calendar_today_rounded,
+                                color: Colors.orange.shade600,
+                                size: 20,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Date & Time",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: ElevatedButton.icon(
+                            icon: Icon(
+                              Icons.access_time_rounded,
+                              color: Color(0xFF2C5F2D),
+                              size: 20,
+                            ),
+                            label: Text(
+                              _eventDate == null
+                                  ? "Select Date & Time"
+                                  : DateFormat(
+                                      'dd MMM yyyy, hh:mm a',
+                                    ).format(_eventDate!),
+                              style: TextStyle(
+                                color: _eventDate == null
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade800,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime(2100),
+                              );
+                              if (date != null) {
+                                final time = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.now(),
+                                );
+                                if (time != null) {
+                                  setState(() {
+                                    _eventDate = DateTime(
+                                      date.year,
+                                      date.month,
+                                      date.day,
+                                      time.hour,
+                                      time.minute,
+                                    );
+                                  });
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // 🖼️ Media Section
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.photo_library_rounded,
+                          color: Colors.purple.shade600,
+                          size: 20,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        "Event Images",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade800,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                  Center(
+                  SizedBox(height: 12),
+                  Text(
+                    "Upload up to 5 images",
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  ),
+                  SizedBox(height: 16),
+                  if (_mediaFiles.isNotEmpty)
+                    Column(
+                      children: [
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: _mediaFiles.map((f) {
+                            return Stack(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _showFullImage(f),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.file(
+                                      f,
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade600,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                    ),
+                  Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: teal.shade700,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                          horizontal: 24,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                      icon: Icon(
+                        Icons.add_photo_alternate_rounded,
+                        color: Color(0xFF2C5F2D),
+                        size: 20,
                       ),
-                      onPressed: _isSaving ? null : _saveEvent,
-                      icon: _isSaving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save, color: Colors.white),
                       label: Text(
-                        _isSaving ? "Saving..." : "Save Event",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
+                        "Add Images (${_mediaFiles.length}/5)",
+                        style: TextStyle(
+                          color: Color(0xFF2C5F2D),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _pickMedia,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+            SizedBox(height: 20),
+
+            // 💾 Save Button
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF2C5F2D).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                icon: _isSaving
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.save_rounded, color: Colors.white, size: 20),
+                label: Text(
+                  _isSaving ? "Creating Event..." : "Create Event",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _isSaving ? null : _saveEvent,
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      maxLines: maxLines,
+      style: TextStyle(
+        color: Colors.grey.shade800,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        prefixIcon: Container(
+          padding: EdgeInsets.all(12),
+          margin: EdgeInsets.only(right: 12),
+          child: Icon(icon, color: Color(0xFF2C5F2D)),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF2C5F2D), width: 2),
+        ),
+        contentPadding: EdgeInsets.all(16),
       ),
     );
   }

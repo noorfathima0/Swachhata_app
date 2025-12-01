@@ -53,9 +53,6 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
 
   Future<void> loadData() async {
     try {
-      // ---------------------------
-      // READ WEIGHMENTS
-      // ---------------------------
       final weighSnap = await FirebaseFirestore.instance
           .collection("processing_weighments")
           .get();
@@ -73,9 +70,7 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
         sanitary += (data["sanitaryTons"] ?? 0).toDouble();
       }
 
-      // ---------------------------
-      // READ SALES
-      // ---------------------------
+      // 🔥 Fetch Sales
       final salesSnap = await FirebaseFirestore.instance
           .collection("processing_sales")
           .get();
@@ -93,7 +88,7 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
         inert += (data["inertTons"] ?? 0).toDouble();
       }
     } catch (e) {
-      print("❌ Firestore READ failed: $e");
+      print("❌ Error loading summary: $e");
     }
 
     if (mounted) setState(() => loading = false);
@@ -101,20 +96,27 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final dateFormatted = DateFormat("dd MMM yyyy").format(selectedDate);
+
     final totalInput = organic + dry + mixed + sanitary;
 
     final segregationEff = totalInput == 0 ? 0 : (mixed / totalInput) * 100;
+
     final totalOutput = compost + recyclable + rdf + inert;
     final processingEff = totalInput == 0
         ? 0
         : (totalOutput / totalInput) * 100;
 
-    final formattedDate = DateFormat("dd MMM yyyy").format(selectedDate);
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+
       appBar: AppBar(
-        title: const Text("Processing Summary"),
-        backgroundColor: Colors.teal,
+        title: const Text(
+          "Processing Summary",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.teal.shade800,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_month),
@@ -122,72 +124,118 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
           ),
         ],
       ),
+
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               children: [
                 Text(
-                  "Summary for $formattedDate",
-                  style: const TextStyle(
+                  "Summary for $dateFormatted",
+                  style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade800,
                   ),
                 ),
-
-                const SizedBox(height: 15),
-
-                _buildPieChart(totalInput),
-
                 const SizedBox(height: 20),
 
-                // _buildPercentTile("Organic Waste", organic, totalInput),
-                // _buildPercentTile("Dry Waste", dry, totalInput),
-                // _buildPercentTile("Mixed Waste", mixed, totalInput),
-                // _buildPercentTile("Sanitary Waste", sanitary, totalInput),
-                const SizedBox(height: 30),
+                // --------------------------------------------------------------
+                // PIE CHART CARD
+                // --------------------------------------------------------------
+                _chartCard(totalInput),
 
-                _buildCard(
+                const SizedBox(height: 26),
+
+                // --------------------------------------------------------------
+                // SEGREGATION EFFICIENCY CARD
+                // --------------------------------------------------------------
+                _efficiencyCard(
                   title: "Segregation Efficiency",
                   value: "${segregationEff.toStringAsFixed(2)}%",
                   color: Colors.deepPurple,
+                  icon: Icons.recycling_outlined,
                 ),
 
                 const SizedBox(height: 20),
 
-                _buildCard(
+                // --------------------------------------------------------------
+                // PROCESSING EFFICIENCY
+                // --------------------------------------------------------------
+                _efficiencyCard(
                   title: "Processing Efficiency",
                   value: "${processingEff.toStringAsFixed(2)}%",
                   color: Colors.green.shade700,
+                  icon: Icons.factory_outlined,
                 ),
               ],
             ),
     );
   }
 
-  // ---------------------------------------------------
-  // PIE CHART WITH LABELS
-  // ---------------------------------------------------
-  Widget _buildPieChart(double total) {
-    if (total == 0) return const Text("No data", textAlign: TextAlign.center);
-
-    return SizedBox(
-      height: 300,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 3,
-          centerSpaceRadius: 40,
-          sections: [
-            _pieSlice("Organic", organic, total, Colors.green),
-            _pieSlice("Dry", dry, total, Colors.blue),
-            _pieSlice("Mixed", mixed, total, Colors.orange),
-            _pieSlice("Sanitary", sanitary, total, Colors.red),
-          ],
-        ),
+  // --------------------------------------------------------------------
+  // PIE CHART WRAPPED IN A BEAUTIFUL CARD
+  // --------------------------------------------------------------------
+  Widget _chartCard(double totalInput) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pie_chart, color: Colors.teal.shade700),
+              const SizedBox(width: 10),
+              Text(
+                "Waste Composition",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          totalInput == 0
+              ? const Text(
+                  "No Processing Data",
+                  style: TextStyle(color: Colors.grey),
+                )
+              : SizedBox(
+                  height: 250,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 3,
+                      centerSpaceRadius: 40,
+                      sections: [
+                        _pieSlice("Organic", organic, totalInput, Colors.green),
+                        _pieSlice("Dry", dry, totalInput, Colors.blue),
+                        _pieSlice("Mixed", mixed, totalInput, Colors.orange),
+                        _pieSlice("Sanitary", sanitary, totalInput, Colors.red),
+                      ],
+                    ),
+                  ),
+                ),
+        ],
       ),
     );
   }
 
+  // --------------------------------------------------------------------
+  // BEAUTIFUL PIE SECTION
+  // --------------------------------------------------------------------
   PieChartSectionData _pieSlice(
     String name,
     double value,
@@ -195,6 +243,7 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
     Color color,
   ) {
     final percent = total == 0 ? 0 : (value / total) * 100;
+
     return PieChartSectionData(
       value: value,
       color: color,
@@ -203,64 +252,67 @@ class _ProcessingSummaryPageState extends State<ProcessingSummaryPage> {
       titleStyle: const TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.bold,
-        fontSize: 12,
+        fontSize: 11,
       ),
     );
   }
 
-  // ---------------------------------------------------
-  // PERCENT BAR TILE
-  // ---------------------------------------------------
-  // Widget _buildPercentTile(String name, double value, double total) {
-  //   final percent = total == 0 ? 0 : (value / total) * 100;
-
-  //   return Card(
-  //     child: ListTile(
-  //       title: Text(name),
-  //       subtitle: LinearProgressIndicator(
-  //         value: percent / 100,
-  //         color: Colors.teal,
-  //       ),
-  //       trailing: Text("${percent.toStringAsFixed(1)}%"),
-  //     ),
-  //   );
-  // }
-
-  // ---------------------------------------------------
-  // CARD COMPONENT
-  // ---------------------------------------------------
-  Widget _buildCard({
+  // --------------------------------------------------------------------
+  // EFFICIENCY CARD
+  // --------------------------------------------------------------------
+  Widget _efficiencyCard({
     required String title,
     required String value,
     required Color color,
+    required IconData icon,
   }) {
-    return Card(
-      elevation: 2,
-      color: color.withOpacity(0.15),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: color.withOpacity(.15),
+            radius: 26,
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -22,9 +22,13 @@ class _SalesEntryPageState extends State<SalesEntryPage> {
 
   final inertCtrl = TextEditingController();
 
+  bool saving = false;
+
   double calc(double qty, double rate) => qty * rate;
 
   Future<void> saveSale() async {
+    setState(() => saving = true);
+
     final compostQty = double.tryParse(compostCtrl.text) ?? 0.0;
     final compostRate = double.tryParse(compostPriceCtrl.text) ?? 0.0;
 
@@ -52,44 +56,110 @@ class _SalesEntryPageState extends State<SalesEntryPage> {
       "inertTons": double.tryParse(inertCtrl.text) ?? 0.0,
     });
 
-    Navigator.pop(context);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Sales entry saved")));
+    setState(() => saving = false);
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Sales entry saved")));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+
       appBar: AppBar(
         title: const Text("Sales Entry"),
-        backgroundColor: Colors.teal,
+        backgroundColor: Colors.teal.shade800,
+        foregroundColor: Colors.white,
       ),
+
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              title("Compost"),
-              buildField("Compost Sales (Tons)", compostCtrl),
-              buildField("Price per Ton", compostPriceCtrl),
+              _sectionCard(
+                icon: Icons.grass,
+                title: "Compost Sales",
+                child: Column(
+                  children: [
+                    _buildField("Compost Sold (Tons)", compostCtrl),
+                    const SizedBox(height: 16),
+                    _buildField("Price per Ton (₹)", compostPriceCtrl),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
 
-              title("Recyclables"),
-              buildField("Recyclable Sales (Tons)", recycleCtrl),
-              buildField("Price per Ton", recyclePriceCtrl),
+              _sectionCard(
+                icon: Icons.recycling_outlined,
+                title: "Recyclables Sales",
+                child: Column(
+                  children: [
+                    _buildField("Recyclables Sold (Tons)", recycleCtrl),
+                    const SizedBox(height: 16),
+                    _buildField("Price per Ton (₹)", recyclePriceCtrl),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
 
-              title("RDF"),
-              buildField("RDF Sales (Tons)", rdfCtrl),
-              buildField("Price per Ton", rdfPriceCtrl),
+              _sectionCard(
+                icon: Icons.local_fire_department_outlined,
+                title: "RDF Sales",
+                child: Column(
+                  children: [
+                    _buildField("RDF Sold (Tons)", rdfCtrl),
+                    const SizedBox(height: 16),
+                    _buildField("Price per Ton (₹)", rdfPriceCtrl),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
 
-              title("Inert Waste"),
-              buildField("Inert Waste Landfilling (Tons)", inertCtrl),
+              _sectionCard(
+                icon: Icons.terrain_outlined,
+                title: "Inert Waste",
+                child: _buildField("Inert Waste (Tons)", inertCtrl),
+              ),
 
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: saveSale,
-                child: const Text("Save Entry"),
+              const SizedBox(height: 30),
+
+              // SAVE BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: saving ? null : saveSale,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: saving
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : const Text(
+                          "Save Entry",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
               ),
             ],
           ),
@@ -98,27 +168,77 @@ class _SalesEntryPageState extends State<SalesEntryPage> {
     );
   }
 
-  Widget title(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 10, top: 10),
-    child: Text(
-      t,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.bold,
-        color: Colors.teal,
+  // -----------------------------------------------------------
+  // BEAUTIFUL SECTION CARD
+  // -----------------------------------------------------------
+  Widget _sectionCard({
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 6,
+            offset: const Offset(2, 4),
+          ),
+        ],
       ),
-    ),
-  );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // HEADER
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.teal.shade50,
+                child: Icon(icon, color: Colors.teal.shade700, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
 
-  Widget buildField(String label, TextEditingController c) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: c,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
+          child,
+        ],
+      ),
+    );
+  }
+
+  // -----------------------------------------------------------
+  // INPUT FIELD WITH THEME
+  // -----------------------------------------------------------
+  Widget _buildField(String label, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white,
+        prefixIcon: Icon(Icons.edit_outlined, color: Colors.teal.shade700),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
       ),
     );

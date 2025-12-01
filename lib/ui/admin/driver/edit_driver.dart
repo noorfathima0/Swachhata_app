@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../../services/driver_service.dart';
 import 'package:intl/intl.dart';
+import '../../../services/driver_service.dart';
 
 class EditDriverPage extends StatefulWidget {
   final String driverId;
@@ -30,12 +30,8 @@ class _EditDriverPageState extends State<EditDriverPage> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(
-      text: widget.driverData['name'] ?? '',
-    );
-    _phoneController = TextEditingController(
-      text: widget.driverData['phone'] ?? '',
-    );
+    _nameController = TextEditingController(text: widget.driverData['name']);
+    _phoneController = TextEditingController(text: widget.driverData['phone']);
     _ageController = TextEditingController(
       text: widget.driverData['age']?.toString() ?? '',
     );
@@ -49,7 +45,9 @@ class _EditDriverPageState extends State<EditDriverPage> {
     super.dispose();
   }
 
-  // ------------------ UPDATE DRIVER ------------------
+  // ------------------------------------------------------------------
+  //                       UPDATE DRIVER
+  // ------------------------------------------------------------------
   Future<void> _updateDriver() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -57,9 +55,9 @@ class _EditDriverPageState extends State<EditDriverPage> {
 
     try {
       await DriverService().updateDriver(widget.driverId, {
-        'name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'age': int.tryParse(_ageController.text.trim()) ?? 0,
+        "name": _nameController.text.trim(),
+        "phone": _phoneController.text.trim(),
+        "age": int.tryParse(_ageController.text.trim()) ?? 0,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,22 +74,35 @@ class _EditDriverPageState extends State<EditDriverPage> {
     setState(() => _loading = false);
   }
 
-  // ------------------ DELETE DRIVER ------------------
+  // ------------------------------------------------------------------
+  //                       DELETE DRIVER
+  // ------------------------------------------------------------------
   Future<void> _deleteDriver() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Driver"),
-        content: const Text(
-          "Are you sure you want to delete this driver permanently?",
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          "Delete Driver",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        content: const Text(
+          "Are you sure you want to permanently delete this driver?",
+        ),
+        actionsPadding: const EdgeInsets.all(12),
         actions: [
           TextButton(
             child: const Text("Cancel"),
             onPressed: () => Navigator.pop(context, false),
           ),
-          TextButton(
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text("Delete"),
             onPressed: () => Navigator.pop(context, true),
           ),
         ],
@@ -103,18 +114,14 @@ class _EditDriverPageState extends State<EditDriverPage> {
     setState(() => _deleting = true);
 
     try {
-      final driverEmail = widget.driverData['email'] ?? '';
-      final driverPassword = widget.driverData['password'] ?? '';
+      final email = widget.driverData['email'] ?? '';
+      final password = widget.driverData['password'] ?? '';
 
-      if (driverEmail.isEmpty || driverPassword.isEmpty) {
-        throw Exception("Driver email or password missing.");
+      if (email.isEmpty || password.isEmpty) {
+        throw Exception("Driver credentials missing.");
       }
 
-      await DriverService().deleteDriver(
-        widget.driverId,
-        driverEmail,
-        driverPassword,
-      );
+      await DriverService().deleteDriver(widget.driverId, email, password);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Driver deleted successfully")),
@@ -130,142 +137,278 @@ class _EditDriverPageState extends State<EditDriverPage> {
     setState(() => _deleting = false);
   }
 
+  // ------------------------------------------------------------------
+  //                           UI
+  // ------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final createdAt = widget.driverData['createdAt'] != null
         ? (widget.driverData['createdAt'] as Timestamp).toDate()
         : null;
 
-    final formattedDate = createdAt != null
-        ? DateFormat('dd MMM yyyy, hh:mm a').format(createdAt)
+    final createdText = createdAt != null
+        ? DateFormat("dd MMM yyyy, hh:mm a").format(createdAt)
         : "Unknown";
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+
+      // ------------------ MODERN APP BAR ------------------
       appBar: AppBar(
-        title: const Text("Edit Driver"),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+
+        leading: Container(
+          margin: const EdgeInsets.only(left: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_rounded,
+              size: 18,
+              color: Colors.black87,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+
+        title: Text(
+          "Edit Driver",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
+        ),
       ),
-      body: Padding(
+
+      // ------------------ CONTENT ------------------
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              // DRIVER INFO CARD
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          children: [
+            // Driver Info Card
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      const Text(
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C5F2D).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          color: Color(0xFF2C5F2D),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
                         "Driver Account Details",
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // EMAIL
-                      Text(
-                        "Email",
-                        style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                      ),
-                      Text(
-                        widget.driverData['email'] ?? "N/A",
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // CREATED AT
-                      Text(
-                        "Account Created",
-                        style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                      ),
-                      Text(
-                        formattedDate,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade800,
                         ),
                       ),
                     ],
                   ),
-                ),
+
+                  const SizedBox(height: 22),
+
+                  _infoRow("Email", widget.driverData['email'] ?? "N/A"),
+                  const SizedBox(height: 14),
+
+                  _infoRow("Created At", createdText),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 20),
+            // Form Card
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  _inputField(
+                    controller: _nameController,
+                    label: "Driver Name",
+                    icon: Icons.person,
+                    validator: (v) =>
+                        v!.isEmpty ? "Please enter driver name" : null,
+                  ),
+                  const SizedBox(height: 16),
 
-              // NAME
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: "Driver Name"),
-                validator: (v) =>
-                    v!.isEmpty ? "Please enter driver name" : null,
+                  _inputField(
+                    controller: _phoneController,
+                    label: "Phone Number",
+                    icon: Icons.phone,
+                    validator: (v) =>
+                        v!.isEmpty ? "Please enter phone number" : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  _inputField(
+                    controller: _ageController,
+                    label: "Age",
+                    icon: Icons.cake,
+                    keyboard: TextInputType.number,
+                    validator: (v) => v!.isEmpty ? "Please enter age" : null,
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // SAVE BUTTON
+                  _saveButton(),
+
+                  const SizedBox(height: 18),
+
+                  // DELETE BUTTON
+                  _deleteButton(),
+                ],
               ),
-              const SizedBox(height: 15),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-              // PHONE
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: "Phone Number"),
-                validator: (v) =>
-                    v!.isEmpty ? "Please enter phone number" : null,
-              ),
-              const SizedBox(height: 15),
-
-              // AGE
-              TextFormField(
-                controller: _ageController,
-                decoration: const InputDecoration(labelText: "Age"),
-                keyboardType: TextInputType.number,
-                validator: (v) => v!.isEmpty ? "Please enter age" : null,
-              ),
-
-              const SizedBox(height: 30),
-
-              // UPDATE BUTTON
-              ElevatedButton(
-                onPressed: _loading ? null : _updateDriver,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Save Changes",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-              ),
-              const SizedBox(height: 20),
-
-              // DELETE BUTTON
-              OutlinedButton(
-                onPressed: _deleting ? null : _deleteDriver,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: _deleting
-                    ? const CircularProgressIndicator(color: Colors.red)
-                    : const Text(
-                        "Delete Driver",
-                        style: TextStyle(color: Colors.red, fontSize: 16),
-                      ),
-              ),
-            ],
+  // ------------------------------------------------------------------
+  //                        UI COMPONENTS
+  // ------------------------------------------------------------------
+  Widget _infoRow(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
           ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _inputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscure = false,
+    TextInputType keyboard = TextInputType.text,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      keyboardType: keyboard,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF2C5F2D)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+          borderSide: BorderSide(color: Color(0xFF2C5F2D), width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _saveButton() {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: ElevatedButton(
+        onPressed: _loading ? null : _updateDriver,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+        ),
+        child: _loading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text(
+                "Save Changes",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _deleteButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton(
+        onPressed: _deleting ? null : _deleteDriver,
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.red),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: _deleting
+            ? const CircularProgressIndicator(color: Colors.red)
+            : const Text(
+                "Delete Driver",
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

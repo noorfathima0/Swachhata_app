@@ -12,7 +12,6 @@ class SanitationSummaryPage extends StatefulWidget {
 class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
   bool loading = true;
   DateTime selectedDate = DateTime.now();
-
   List<QueryDocumentSnapshot> vehicles = [];
 
   @override
@@ -23,11 +22,8 @@ class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
 
   Future<void> _loadVehicles() async {
     setState(() => loading = true);
-
     final snap = await FirebaseFirestore.instance.collection("vehicles").get();
-
     vehicles = snap.docs;
-
     setState(() => loading = false);
   }
 
@@ -38,9 +34,9 @@ class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
         d.day == selectedDate.day;
   }
 
-  // 🟠 Sanitation Efficiency (same logic as daily report)
+  // 🟢 Sanitation Efficiency Calculation
   double _calculateSanitationEfficiency() {
-    double totalPercent = 0;
+    double total = 0;
     int count = 0;
 
     for (var doc in vehicles) {
@@ -51,15 +47,14 @@ class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
       if (service == null) continue;
 
       final startTs = service["startTime"];
-      if (startTs is! Timestamp) continue;
-      if (!_isSameDate(startTs)) continue;
+      if (startTs is! Timestamp || !_isSameDate(startTs)) continue;
 
       if (data["type"] == "jcb") {
         final stops = List<String>.from(data["manualRoute"]?["stops"] ?? []);
         final completed = List<String>.from(service["completedStops"] ?? []);
 
         if (stops.isNotEmpty) {
-          totalPercent += (completed.length / stops.length) * 100;
+          total += (completed.length / stops.length) * 100;
           count++;
         }
       } else {
@@ -67,13 +62,13 @@ class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
         final traveled = (service["distanceKm"] ?? 0).toDouble();
 
         if (km > 0) {
-          totalPercent += (traveled / km) * 100;
+          total += (traveled / km) * 100;
           count++;
         }
       }
     }
 
-    return count == 0 ? 0 : totalPercent / count;
+    return count == 0 ? 0 : total / count;
   }
 
   int _countType(String type) {
@@ -86,71 +81,177 @@ class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
   @override
   Widget build(BuildContext context) {
     final dateFormatted = DateFormat("dd MMM yyyy").format(selectedDate);
-
     final efficiency = _calculateSanitationEfficiency();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Sanitation Summary"),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime(2023),
-                lastDate: DateTime.now(),
-              );
+      backgroundColor: const Color(0xFFF8FAFC),
 
-              if (picked != null) {
-                setState(() => selectedDate = picked);
-              }
-            },
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+
+        leading: Container(
+          margin: const EdgeInsets.only(left: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
+            onPressed: () => Navigator.pop(context),
+            color: Colors.grey.shade800,
+          ),
+        ),
+
+        title: Text(
+          "Sanitation Summary",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
+        ),
+
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: Colors.teal.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.calendar_month, color: Colors.teal.shade700),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() => selectedDate = picked);
+                }
+              },
+            ),
           ),
         ],
       ),
+
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
                 Text(
                   "Summary for $dateFormatted",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade800,
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                _sectionTitle("Vehicle Count"),
-                _countTile("JCB", _countType("jcb")),
-                _countTile("Tractor", _countType("tractor")),
+                // ---------------- VEHICLE COUNT ----------------
+                _sectionHeader("Vehicle Count"),
 
-                const SizedBox(height: 25),
-                _sectionTitle("Sanitation Efficiency"),
-                _efficiencyBar(efficiency),
+                _cardContainer(
+                  children: [
+                    _countRow("JCB", _countType("jcb")),
+                    _countRow("Tractor", _countType("tractor")),
+                  ],
+                ),
+
+                const SizedBox(height: 26),
+
+                // ---------------- SANITATION EFFICIENCY ----------------
+                _sectionHeader("Sanitation Efficiency"),
+
+                _cardContainer(children: [_efficiencyBar(efficiency)]),
               ],
             ),
     );
   }
 
-  Widget _sectionTitle(String t) => Text(
-    t,
-    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-  );
+  // ---------------- SECTION HEADER ----------------
+  Widget _sectionHeader(String title) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.teal.shade50,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.cleaning_services,
+            color: Colors.teal.shade700,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+          ),
+        ),
+      ],
+    );
+  }
 
-  Widget _countTile(String title, int count) => ListTile(
-    title: Text(title),
-    trailing: Text(
-      "$count",
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-    ),
-  );
+  // ---------------- CARD CONTAINER ----------------
+  Widget _cardContainer({required List<Widget> children}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(top: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(children: children),
+    );
+  }
 
+  // ---------------- COUNT ROW ----------------
+  Widget _countRow(String label, int count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            "$count",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------- EFFICIENCY BAR ----------------
   Widget _efficiencyBar(double percent) {
     final color = percent >= 70
         ? Colors.green
@@ -164,17 +265,20 @@ class _SanitationSummaryPageState extends State<SanitationSummaryPage> {
         Text(
           "${percent.toStringAsFixed(1)}%",
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
             color: color,
           ),
         ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: percent / 100,
-          color: color,
-          backgroundColor: Colors.grey.shade300,
-          minHeight: 12,
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: percent / 100,
+            color: color,
+            backgroundColor: Colors.grey.shade300,
+            minHeight: 12,
+          ),
         ),
       ],
     );

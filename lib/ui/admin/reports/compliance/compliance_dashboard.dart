@@ -14,9 +14,16 @@ class _ComplianceDashboardPageState extends State<ComplianceDashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+
       appBar: AppBar(
-        title: const Text("Compliance Dashboard"),
-        backgroundColor: Colors.teal,
+        title: const Text(
+          "Compliance Dashboard",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.teal.shade800,
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -37,22 +44,36 @@ class _ComplianceDashboardPageState extends State<ComplianceDashboardPage> {
             .snapshots(),
         builder: (context, snap) {
           if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.teal),
+            );
           }
 
           final docs = snap.data!.docs;
 
           if (docs.isEmpty) {
-            return const Center(child: Text("No compliance records found"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.fact_check_outlined,
+                    size: 70,
+                    color: Colors.teal.shade300,
+                  ),
+                  const SizedBox(height: 10),
+                  const Text("No compliance records found"),
+                ],
+              ),
+            );
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (_, i) {
               final data = docs[i].data() as Map<String, dynamic>;
               data["id"] = docs[i].id;
-
               return _buildComplianceCard(context, data);
             },
           );
@@ -61,81 +82,107 @@ class _ComplianceDashboardPageState extends State<ComplianceDashboardPage> {
     );
   }
 
-  // -----------------------------------------------------
-  // 🔥 CARD UI WITH 30-DAY WARNING + VIEW DOCUMENTS + EDIT
-  // -----------------------------------------------------
+  // ============================================================
+  //               🔥 COMPLIANCE CARD (Upgraded UI)
+  // ============================================================
   Widget _buildComplianceCard(BuildContext context, Map data) {
     final vehicle = data["vehicleNumber"] ?? "Unknown";
 
-    // Dates
-    final DateTime? insuranceEnd = _toDate(data["insuranceEnd"]);
-    final DateTime? renewalDue = _toDate(data["renewalDue"]);
-    final DateTime? pollution = _toDate(data["pollutionRenew"]);
-    final DateTime? labor = _toDate(data["laborInsurance"]);
-    final DateTime? fc = _toDate(data["fcDue"]);
+    final insuranceEnd = _toDate(data["insuranceEnd"]);
+    final renewalDue = _toDate(data["renewalDue"]);
+    final pollution = _toDate(data["pollutionRenew"]);
+    final labor = _toDate(data["laborInsurance"]);
+    final fc = _toDate(data["fcDue"]);
 
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 14),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // HEADER — vehicle + edit button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ---------------------------------------------------------
+          // HEADER
+          // ---------------------------------------------------------
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.teal.withOpacity(.15),
+                child: Icon(
+                  Icons.local_shipping,
+                  size: 22,
+                  color: Colors.teal.shade700,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
                   vehicle,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade900,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.teal),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ComplianceEntryPage(
-                          docId: data["id"],
-                          existingData: data as Map<String, dynamic>,
-                        ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit, color: Colors.teal.shade700),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ComplianceEntryPage(
+                        docId: data["id"],
+                        existingData: data as Map<String, dynamic>,
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
 
-            const Divider(),
+          const SizedBox(height: 16),
 
-            // Notification badges
-            _buildAlertTile("Insurance Renewal", insuranceEnd),
-            _buildAlertTile("General Renewal Due", renewalDue),
-            _buildAlertTile("Pollution Licence", pollution),
-            _buildAlertTile("Labor Insurance", labor),
-            _buildAlertTile("Vehicle FC", fc),
+          // ---------------------------------------------------------
+          // ALERT TILES
+          // ---------------------------------------------------------
+          _alertTile("Insurance Renewal", insuranceEnd),
+          _alertTile("General Renewal Due", renewalDue),
+          _alertTile("Pollution License", pollution),
+          _alertTile("Labor Insurance", labor),
+          _alertTile("Vehicle FC", fc),
 
-            const SizedBox(height: 10),
+          const SizedBox(height: 18),
 
-            // Documents view buttons
-            _docButton("Pollution Document", data["pollutionFile"]),
-            _docButton("Labor Insurance Document", data["laborFile"]),
-            _docButton("FC Certificate", data["fcFile"]),
-          ],
-        ),
+          // ---------------------------------------------------------
+          // DOCUMENT BUTTONS
+          // ---------------------------------------------------------
+          _docButton("Pollution Document", data["pollutionFile"]),
+          _docButton("Labor Insurance Document", data["laborFile"]),
+          _docButton("FC Certificate", data["fcFile"]),
+        ],
       ),
     );
   }
 
-  // -----------------------------------------------------
-  // 🔥 EXPIRY + 30-DAY WARNING LOGIC
-  // -----------------------------------------------------
-  Widget _buildAlertTile(String title, DateTime? date) {
+  // ============================================================
+  //              🔥 ALERT TILE (Beautiful UI)
+  // ============================================================
+  Widget _alertTile(String title, DateTime? date) {
     if (date == null) return const SizedBox();
 
     final now = DateTime.now();
@@ -156,109 +203,108 @@ class _ComplianceDashboardPageState extends State<ComplianceDashboardPage> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(.15),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withOpacity(.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.event, color: color),
-          const SizedBox(width: 10),
+          Icon(Icons.event_note, color: color),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               "$title: ${date.toString().split(" ").first}",
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade900,
+              ),
             ),
           ),
           Text(
             message,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),
     );
   }
 
-  // -----------------------------------------------------
-  // VIEW DOCUMENT BUTTON
-  // -----------------------------------------------------
+  // ============================================================
+  //              🔥 DOCUMENT BUTTON
+  // ============================================================
   Widget _docButton(String label, String? url) {
     if (url == null || url.isEmpty) return const SizedBox();
 
-    return TextButton.icon(
-      icon: const Icon(Icons.attach_file, color: Colors.teal),
-      label: Text(label),
-      onPressed: () {
-        _openDocumentViewer(url);
-      },
-    );
-  }
-
-  // -----------------------------------------------------
-  // WEBSITE-STYLE POPUP TO SHOW URL
-  // -----------------------------------------------------
-  void _openDocumentViewer(String url) {
-    final isPdf = url.toLowerCase().contains(".pdf");
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          insetPadding: const EdgeInsets.all(10),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: Colors.teal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Document Viewer",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              Expanded(
-                child: isPdf ? _buildPdfViewer(url) : _buildImageViewer(url),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  DateTime? _toDate(dynamic v) {
-    if (v is Timestamp) return v.toDate();
-    return null;
-  }
-
-  Widget _buildPdfViewer(String url) {
-    return const Center(
-      child: Text(
-        "PDF Preview Not Supported.\nTap button to open in browser.",
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: TextButton.icon(
+        icon: Icon(Icons.attach_file, color: Colors.teal.shade700),
+        label: Text(label),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        ),
+        onPressed: () => _openDocument(url),
       ),
     );
   }
 
-  Widget _buildImageViewer(String url) {
+  // ============================================================
+  //      🔥 Popup Viewer (image or PDF fallback message)
+  // ============================================================
+  void _openDocument(String url) {
+    final isPdf = url.toLowerCase().contains(".pdf");
+
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.teal.shade700,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Document Viewer",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(child: isPdf ? _pdfMessage() : _imageViewer(url)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pdfMessage() {
+    return const Center(
+      child: Text(
+        "PDF preview not supported.\nTap the link to open it in a browser.",
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 15, color: Colors.black54),
+      ),
+    );
+  }
+
+  Widget _imageViewer(String url) {
     return InteractiveViewer(
       maxScale: 5,
       minScale: 0.5,
@@ -269,5 +315,10 @@ class _ComplianceDashboardPageState extends State<ComplianceDashboardPage> {
             const Center(child: Text("Failed to load image")),
       ),
     );
+  }
+
+  DateTime? _toDate(dynamic v) {
+    if (v is Timestamp) return v.toDate();
+    return null;
   }
 }

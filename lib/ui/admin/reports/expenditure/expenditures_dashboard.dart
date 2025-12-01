@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'expenditure_entry_page.dart';
 
 class ExpenditureDashboardPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class ExpenditureDashboardPage extends StatefulWidget {
 
 class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
   bool loading = true;
+  DateTime selectedDate = DateTime.now();
 
   double manpower = 0;
   double vehicle = 0;
@@ -26,6 +28,31 @@ class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
     loadData();
   }
 
+  Future<void> pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+        loading = true;
+      });
+      loadData();
+    }
+  }
+
+  bool isSameDay(Timestamp? ts) {
+    if (ts == null) return false;
+    final d = ts.toDate();
+    return d.year == selectedDate.year &&
+        d.month == selectedDate.month &&
+        d.day == selectedDate.day;
+  }
+
   Future<void> loadData() async {
     try {
       final snap = await FirebaseFirestore.instance
@@ -33,14 +60,11 @@ class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
           .orderBy("createdAt", descending: true)
           .get();
 
-      manpower = 0;
-      vehicle = 0;
-      others = 0;
-      revenue = 0;
-      totalExpenditure = 0;
+      manpower = vehicle = others = revenue = totalExpenditure = 0;
 
       for (var doc in snap.docs) {
         final d = doc.data();
+        if (!isSameDay(d["createdAt"])) continue;
 
         manpower +=
             (d["pkWages"] ?? 0) +
@@ -70,17 +94,24 @@ class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
       print("❌ Error loading dashboard: $e");
     }
 
-    setState(() => loading = false);
+    if (mounted) setState(() => loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    double costPerTon = totalExpenditure == 0 ? 0 : totalExpenditure - revenue;
+    double netCost = totalExpenditure - revenue;
+    final dateText = DateFormat("dd MMM yyyy").format(selectedDate);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+
       appBar: AppBar(
-        title: const Text("Expenditure Dashboard"),
-        backgroundColor: Colors.teal,
+        title: const Text(
+          "Expenditure Dashboard",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.teal.shade800,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -97,39 +128,118 @@ class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
       body: loading
           ? const Center(child: CircularProgressIndicator(color: Colors.teal))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               children: [
-                _sectionTitle("Expenditure Summary"),
-                _summaryCard(
-                  "Total Expenditure",
-                  "₹${totalExpenditure.toStringAsFixed(2)}",
-                  Colors.red,
-                ),
-                _summaryCard(
-                  "Revenue (Tax)",
-                  "₹${revenue.toStringAsFixed(2)}",
-                  Colors.green,
-                ),
-                _summaryCard(
-                  "Net Spending (Cost per ton)",
-                  "₹${costPerTon.toStringAsFixed(2)}",
-                  Colors.blue,
+                // --------------------------------------------------
+                // HEADER ROW WITH DATE
+                // --------------------------------------------------
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Expenditure Summary",
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey.shade900,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: pickDate,
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(dateText),
+                    ),
+                  ],
                 ),
 
-                const SizedBox(height: 20),
-                _sectionTitle("Breakdown"),
+                const SizedBox(height: 16),
 
-                SizedBox(height: 250, child: _buildBarChart()),
+                // --------------------------------------------------
+                // SUMMARY CARDS
+                // --------------------------------------------------
+                _summaryCard(
+                  icon: Icons.money_off_csred_outlined,
+                  title: "Total Expenditure",
+                  value: "₹${totalExpenditure.toStringAsFixed(2)}",
+                  color: Colors.red.shade700,
+                ),
+                const SizedBox(height: 12),
 
-                _breakdownTile("Manpower", manpower),
-                _breakdownTile("Vehicle Expenses", vehicle),
-                _breakdownTile("Other Expenses", others),
+                _summaryCard(
+                  icon: Icons.attach_money_outlined,
+                  title: "Revenue (Tax)",
+                  value: "₹${revenue.toStringAsFixed(2)}",
+                  color: Colors.green.shade700,
+                ),
+                const SizedBox(height: 12),
+
+                _summaryCard(
+                  icon: Icons.calculate_outlined,
+                  title: "Net Spending",
+                  value: "₹${netCost.toStringAsFixed(2)}",
+                  color: Colors.blue.shade700,
+                ),
 
                 const SizedBox(height: 30),
+
+                // --------------------------------------------------
+                // BREAKDOWN TITLE
+                // --------------------------------------------------
+                Row(
+                  children: [
+                    Icon(Icons.bar_chart, color: Colors.teal.shade700),
+                    const SizedBox(width: 10),
+                    Text(
+                      "Expense Breakdown",
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // --------------------------------------------------
+                // BAR CHART
+                // --------------------------------------------------
+                Container(
+                  height: 260,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.grey.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.05),
+                        blurRadius: 8,
+                        offset: const Offset(2, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: _buildBarChart(),
+                ),
+
+                const SizedBox(height: 22),
+
+                _breakdownTile("Manpower", manpower),
+                _breakdownTile("Vehicles", vehicle),
+                _breakdownTile("Others", others),
+
+                const SizedBox(height: 30),
+
+                // --------------------------------------------------
+                // ADD NEW EXPENDITURE BUTTON
+                // --------------------------------------------------
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: Colors.teal.shade700,
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -139,72 +249,101 @@ class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
                       ),
                     ).then((_) => loadData());
                   },
-                  icon: const Icon(Icons.add),
-                  label: const Text("Add New Expenditure"),
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text(
+                    "Add New Expenditure",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ),
     );
   }
 
-  // SECTION TITLE
-  Widget _sectionTitle(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      t,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-    ),
-  );
+  // ----------------------------------------------------------------------
+  // MODERN SUMMARY CARD
+  // ----------------------------------------------------------------------
+  Widget _summaryCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: color.withOpacity(.15),
+            child: Icon(icon, color: color, size: 30),
+          ),
+          const SizedBox(width: 16),
 
-  // SUMMARY CARD
-  Widget _summaryCard(String title, String value, Color color) {
-    return Card(
-      elevation: 3,
-      color: color.withOpacity(0.15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                color: color,
-                fontWeight: FontWeight.bold,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 22,
-                color: color,
-                fontWeight: FontWeight.w700,
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
+  // ----------------------------------------------------------------------
   // BAR CHART
+  // ----------------------------------------------------------------------
   Widget _buildBarChart() {
     return BarChart(
       BarChartData(
         barGroups: [
-          _bar("Manpower", manpower, Colors.orange),
-          _bar("Vehicle", vehicle, Colors.blue),
-          _bar("Others", others, Colors.green),
+          _bar(0, manpower, Colors.orange),
+          _bar(1, vehicle, Colors.blue),
+          _bar(2, others, Colors.green),
         ],
+        borderData: FlBorderData(show: false),
+        gridData: FlGridData(show: false),
         titlesData: FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              getTitlesWidget: (v, meta) {
+              getTitlesWidget: (v, _) {
                 switch (v.toInt()) {
                   case 0:
                     return const Text("Manpower");
@@ -212,42 +351,60 @@ class _ExpenditureDashboardPageState extends State<ExpenditureDashboardPage> {
                     return const Text("Vehicle");
                   case 2:
                     return const Text("Others");
-                  default:
-                    return const Text("");
                 }
+                return const Text("");
               },
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
       ),
     );
   }
 
-  BarChartGroupData _bar(String name, double value, Color c) {
+  BarChartGroupData _bar(int x, double value, Color color) {
     return BarChartGroupData(
-      x: name == "Manpower"
-          ? 0
-          : name == "Vehicle"
-          ? 1
-          : 2,
+      x: x,
       barRods: [
         BarChartRodData(
           toY: value,
-          color: c,
-          width: 30,
-          borderRadius: BorderRadius.circular(6),
+          width: 28,
+          color: color,
+          borderRadius: BorderRadius.circular(8),
         ),
       ],
     );
   }
 
+  // ----------------------------------------------------------------------
   // BREAKDOWN TILE
-  Widget _breakdownTile(String name, double value) {
-    return Card(
-      child: ListTile(
-        title: Text(name),
-        trailing: Text("₹${value.toStringAsFixed(2)}"),
+  // ----------------------------------------------------------------------
+  Widget _breakdownTile(String title, double value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            "₹${value.toStringAsFixed(2)}",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.teal.shade700,
+            ),
+          ),
+        ],
       ),
     );
   }

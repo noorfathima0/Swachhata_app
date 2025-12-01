@@ -29,21 +29,41 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
     showDialog(
       context: context,
       builder: (_) => Dialog(
-        backgroundColor: Colors.black.withOpacity(0.9),
-        insetPadding: const EdgeInsets.all(8),
-        child: InteractiveViewer(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.broken_image,
-                size: 80,
-                color: Colors.white70,
+        backgroundColor: Colors.black.withOpacity(0.85),
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: Center(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.broken_image,
+                    color: Colors.white54,
+                    size: 100,
+                  ),
+                ),
               ),
             ),
-          ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -53,17 +73,89 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete Event"),
-        content: const Text("Are you sure you want to delete this event?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.warning_rounded, color: Colors.red.shade600),
+            ),
+            SizedBox(width: 12),
+            Text(
+              "Delete Event",
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to delete this event? This action cannot be undone.",
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+        ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextButton(
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                "Cancel",
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete"),
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.red.shade600, Colors.red.shade800],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                "Delete",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -71,7 +163,40 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
 
     if (confirm == true) {
       await _firestore.collection('events').doc(widget.eventId).delete();
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade600,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_forever_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    "Event deleted successfully",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -81,7 +206,7 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
       text: currentData['description'],
     );
     final locationController = TextEditingController(
-      text: currentData['locationName'],
+      text: currentData['locationName'] ?? '',
     );
     DateTime selectedDate = (currentData['eventDate'] as Timestamp).toDate();
     List<String> currentImages =
@@ -98,188 +223,489 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
               final picker = ImagePicker();
               final picked = await picker.pickMultiImage();
               if (picked.isNotEmpty) {
-                setModalState(() {
-                  newImages.addAll(picked.map((e) => File(e.path)).toList());
-                });
+                final newFiles = picked.map((e) => File(e.path)).toList();
+                if (currentImages.length + newImages.length + newFiles.length >
+                    5) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade600,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "Maximum 5 images allowed",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  setModalState(() {
+                    newImages.addAll(newFiles);
+                  });
+                }
               }
             }
 
-            return AlertDialog(
-              title: const Text("Edit Event"),
-              content: SingleChildScrollView(
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              backgroundColor: Colors.white,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(24),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: "Event Title",
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: descController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: "Description",
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: locationController,
-                      decoration: const InputDecoration(labelText: "Location"),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Icon(Icons.calendar_today, size: 18),
-                        const SizedBox(width: 6),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2C5F2D).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.edit_rounded,
+                            color: Color(0xFF2C5F2D),
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          "Edit Event",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+
+                    _buildTextField(
+                      controller: titleController,
+                      label: "Event Title",
+                      icon: Icons.title_rounded,
+                    ),
+                    SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: descController,
+                      label: "Description",
+                      icon: Icons.description_rounded,
+                      maxLines: 3,
+                    ),
+                    SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: locationController,
+                      label: "Location",
+                      icon: Icons.location_on_rounded,
+                    ),
+                    SizedBox(height: 20),
+
+                    // 📅 Date & Time
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.calendar_today_rounded,
+                            color: Colors.orange.shade600,
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 8),
                         Text(
                           DateFormat(
                             'dd MMM yyyy, hh:mm a',
                           ).format(selectedDate),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
                         ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () async {
-                            final pickedDate = await showDatePicker(
-                              context: context,
-                              initialDate: selectedDate,
-                              firstDate: DateTime(2023),
-                              lastDate: DateTime(2030),
-                            );
-                            if (pickedDate != null) {
-                              final pickedTime = await showTimePicker(
+                        Spacer(),
+                        Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2C5F2D).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: TextButton.icon(
+                            icon: Icon(
+                              Icons.edit_calendar_rounded,
+                              color: Color(0xFF2C5F2D),
+                              size: 16,
+                            ),
+                            label: Text(
+                              "Change",
+                              style: TextStyle(
+                                color: Color(0xFF2C5F2D),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            onPressed: () async {
+                              final pickedDate = await showDatePicker(
                                 context: context,
-                                initialTime: TimeOfDay.fromDateTime(
-                                  selectedDate,
-                                ),
+                                initialDate: selectedDate,
+                                firstDate: DateTime(2023),
+                                lastDate: DateTime(2030),
                               );
-                              if (pickedTime != null) {
-                                setModalState(() {
-                                  selectedDate = DateTime(
-                                    pickedDate.year,
-                                    pickedDate.month,
-                                    pickedDate.day,
-                                    pickedTime.hour,
-                                    pickedTime.minute,
-                                  );
-                                });
+                              if (pickedDate != null) {
+                                final pickedTime = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.fromDateTime(
+                                    selectedDate,
+                                  ),
+                                );
+                                if (pickedTime != null) {
+                                  setModalState(() {
+                                    selectedDate = DateTime(
+                                      pickedDate.year,
+                                      pickedDate.month,
+                                      pickedDate.day,
+                                      pickedTime.hour,
+                                      pickedTime.minute,
+                                    );
+                                  });
+                                }
                               }
-                            }
-                          },
-                          child: const Text("Change"),
+                            },
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Images:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                    SizedBox(height: 20),
+
+                    // 🖼️ Images
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.photo_library_rounded,
+                            color: Colors.purple.shade600,
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Images (${currentImages.length + newImages.length}/5)",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        Spacer(),
+                        Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: TextButton.icon(
+                            icon: Icon(
+                              Icons.add_photo_alternate_rounded,
+                              color: Colors.purple.shade600,
+                              size: 16,
+                            ),
+                            label: Text(
+                              "Add More",
+                              style: TextStyle(
+                                color: Colors.purple.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            onPressed: pickImages,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          ...currentImages.map(
-                            (url) => GestureDetector(
-                              onTap: () => _showFullImage(url),
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 6),
+                    SizedBox(height: 12),
+
+                    if (currentImages.isNotEmpty || newImages.isNotEmpty)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ...currentImages.map(
+                              (url) => GestureDetector(
+                                onTap: () => _showFullImage(url),
+                                child: Container(
+                                  margin: EdgeInsets.only(right: 8),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(
+                                      url,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                width: 80,
+                                                height: 80,
+                                                color: Colors.grey.shade200,
+                                                child: Icon(
+                                                  Icons.broken_image_rounded,
+                                                  color: Colors.grey.shade400,
+                                                ),
+                                              ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            ...newImages.map(
+                              (file) => Container(
+                                margin: EdgeInsets.only(right: 8),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    url,
-                                    width: 70,
-                                    height: 70,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(
+                                    file,
+                                    width: 80,
+                                    height: 80,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          ...newImages.map(
-                            (file) => Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  file,
-                                  width: 70,
-                                  height: 70,
-                                  fit: BoxFit.cover,
+                          ],
+                        ),
+                      ),
+                    SizedBox(height: 24),
+
+                    // 💾 Save Button
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextButton(
+                              style: TextButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: pickImages,
-                            icon: const Icon(
-                              Icons.add_a_photo,
-                              color: Colors.teal,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF2C5F2D).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: isSaving
+                                  ? null
+                                  : () async {
+                                      setModalState(() => isSaving = true);
+                                      try {
+                                        List<String> uploadedUrls = [];
+
+                                        if (newImages.isNotEmpty) {
+                                          for (var img in newImages) {
+                                            final url = await _imgBB
+                                                .uploadImage(img);
+                                            uploadedUrls.add(url);
+                                          }
+                                        }
+
+                                        final updatedData = {
+                                          'title': titleController.text.trim(),
+                                          'description': descController.text
+                                              .trim(),
+                                          'locationName': locationController
+                                              .text
+                                              .trim(),
+                                          'eventDate': Timestamp.fromDate(
+                                            selectedDate,
+                                          ),
+                                          'mediaUrls': [
+                                            ...currentImages,
+                                            ...uploadedUrls,
+                                          ],
+                                        };
+
+                                        await _firestore
+                                            .collection('events')
+                                            .doc(widget.eventId)
+                                            .update(updatedData);
+
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Color(0xFF27AE60),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.check_circle,
+                                                      color: Colors.white,
+                                                      size: 20,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      "Event updated successfully",
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                          Navigator.pop(context);
+                                        }
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.shade600,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.error_outline,
+                                                    color: Colors.white,
+                                                    size: 20,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    "Failed to update: $e",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            backgroundColor: Colors.transparent,
+                                            elevation: 0,
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      } finally {
+                                        setModalState(() => isSaving = false);
+                                      }
+                                    },
+                              child: isSaving
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Text(
+                                      "Save Changes",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          setModalState(() => isSaving = true);
-                          try {
-                            List<String> uploadedUrls = [];
-
-                            if (newImages.isNotEmpty) {
-                              for (var img in newImages) {
-                                final url = await _imgBB.uploadImage(img);
-                                uploadedUrls.add(url);
-                              }
-                            }
-
-                            final updatedData = {
-                              'title': titleController.text.trim(),
-                              'description': descController.text.trim(),
-                              'locationName': locationController.text.trim(),
-                              'eventDate': Timestamp.fromDate(selectedDate),
-                              'mediaUrls': [...currentImages, ...uploadedUrls],
-                            };
-
-                            await _firestore
-                                .collection('events')
-                                .doc(widget.eventId)
-                                .update(updatedData);
-
-                            if (mounted) Navigator.pop(context);
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Failed to update: $e")),
-                            );
-                          } finally {
-                            setModalState(() => isSaving = false);
-                          }
-                        },
-                  child: isSaving
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text("Save"),
-                ),
-              ],
             );
           },
         );
@@ -289,30 +715,56 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tealColor = Colors.teal.shade600;
-
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
           "Event Details",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: tealColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () async {
-              final doc = await _firestore
-                  .collection('events')
-                  .doc(widget.eventId)
-                  .get();
-              if (doc.exists) _editEvent(doc.data() as Map<String, dynamic>);
-            },
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
           ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.white),
-            onPressed: _deleteEvent,
+        ),
+        centerTitle: true,
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+              onPressed: () async {
+                final doc = await _firestore
+                    .collection('events')
+                    .doc(widget.eventId)
+                    .get();
+                if (doc.exists) _editEvent(doc.data() as Map<String, dynamic>);
+              },
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.red.shade600, Colors.red.shade800],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.delete_rounded, color: Colors.white, size: 20),
+              onPressed: _deleteEvent,
+            ),
           ),
         ],
       ),
@@ -320,8 +772,36 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
         stream: _firestore.collection('events').doc(widget.eventId).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.teal),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    "Loading Event...",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -337,113 +817,528 @@ class _AdminEventDetailPageState extends State<AdminEventDetailPage> {
               : 'Unknown date';
           final List<dynamic> interestedUsers =
               (data['interestedUsers'] ?? []) as List<dynamic>;
+          final isPast =
+              eventDate != null && eventDate.toDate().isBefore(DateTime.now());
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 🖼️ Media Carousel
                 if (mediaUrls.isNotEmpty)
-                  CarouselSlider(
-                    options: CarouselOptions(
-                      height: 250,
-                      enlargeCenterPage: true,
-                      viewportFraction: 1.0,
-                      enableInfiniteScroll: false,
+                  Container(
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    items: mediaUrls.map((url) {
-                      return GestureDetector(
-                        onTap: () => _showFullImage(url),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Hero(
-                            tag: url,
-                            child: Image.network(
-                              url,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.broken_image, size: 100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.photo_library_rounded,
+                                color: Colors.purple.shade600,
+                                size: 20,
+                              ),
                             ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Media Gallery (${mediaUrls.length})",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        CarouselSlider(
+                          options: CarouselOptions(
+                            height: 280,
+                            enlargeCenterPage: true,
+                            viewportFraction: 0.9,
+                            enableInfiniteScroll: false,
+                            autoPlay: true,
+                            autoPlayInterval: Duration(seconds: 4),
                           ),
+                          items: mediaUrls.map((url) {
+                            return GestureDetector(
+                              onTap: () => _showFullImage(url),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.network(
+                                  url,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        color: Colors.grey.shade100,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.broken_image_rounded,
+                                              size: 48,
+                                              color: Colors.grey.shade400,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              "Image not available",
+                                              style: TextStyle(
+                                                color: Colors.grey.shade500,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                      );
-                    }).toList(),
-                  ),
-
-                const SizedBox(height: 20),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: tealColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(formattedDate, style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 10),
-
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.teal),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        location,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
 
-                const Divider(height: 30),
+                if (mediaUrls.isNotEmpty) SizedBox(height: 20),
 
-                Text(
-                  description,
-                  style: const TextStyle(fontSize: 16, height: 1.4),
-                ),
-
-                const SizedBox(height: 25),
-                const Text(
-                  "Interested Users",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-
-                if (interestedUsers.isEmpty)
-                  const Text(
-                    "No users have shown interest yet.",
-                    style: TextStyle(color: Colors.grey),
-                  )
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${interestedUsers.length} users interested",
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        children: interestedUsers.map((userName) {
-                          return Chip(
-                            label: Text(userName.toString()),
-                            backgroundColor: Colors.teal.shade50,
-                            side: BorderSide(color: tealColor.withOpacity(0.4)),
-                          );
-                        }).toList(),
+                // 📝 Event Details
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF2C5F2D).withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.event_rounded,
+                              color: Color(0xFF2C5F2D),
+                              size: 28,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        title,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 24,
+                                          color: Colors.grey.shade800,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isPast
+                                            ? Colors.grey.shade100
+                                            : Color(
+                                                0xFF27AE60,
+                                              ).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isPast
+                                              ? Colors.grey.shade300
+                                              : Color(
+                                                  0xFF27AE60,
+                                                ).withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        isPast ? 'Past Event' : 'Upcoming',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isPast
+                                              ? Colors.grey.shade600
+                                              : Color(0xFF27AE60),
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.access_time_rounded,
+                                        color: Colors.orange.shade600,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      formattedDate,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.location_on_rounded,
+                                        color: Colors.red.shade600,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        location,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade600,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      Divider(height: 1, color: Colors.grey.shade200),
+                      SizedBox(height: 20),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.description_rounded,
+                                  color: Colors.blue.shade600,
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                "Description",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            description,
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey.shade700,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // 👥 Interested Users
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.people_rounded,
+                              color: Colors.green.shade600,
+                              size: 20,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            "Interested Users",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      if (interestedUsers.isEmpty)
+                        Container(
+                          padding: EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.people_outline_rounded,
+                                size: 48,
+                                color: Colors.grey.shade400,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                "No users have shown interest yet",
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                "Share the event to get more participants",
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                "${interestedUsers.length} user${interestedUsers.length > 1 ? 's' : ''} interested",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: interestedUsers.map((userId) {
+                                return FutureBuilder<DocumentSnapshot>(
+                                  future: FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(userId)
+                                      .get(),
+                                  builder: (context, userSnapshot) {
+                                    if (userSnapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return _buildUserChip(
+                                        name: "Loading...",
+                                        imageUrl: null,
+                                      );
+                                    }
+
+                                    if (!userSnapshot.hasData ||
+                                        !userSnapshot.data!.exists) {
+                                      return _buildUserChip(
+                                        name: "Unknown User",
+                                        imageUrl: null,
+                                      );
+                                    }
+
+                                    final user =
+                                        userSnapshot.data!.data()
+                                            as Map<String, dynamic>;
+
+                                    return _buildUserChip(
+                                      name: user['name'] ?? "User",
+                                      imageUrl: user['profileImageUrl'],
+                                    );
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 20),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildUserChip({required String name, String? imageUrl}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (imageUrl != null)
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: Colors.white,
+              backgroundImage: NetworkImage(imageUrl),
+            )
+          else
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, size: 14, color: Colors.green),
+            ),
+          SizedBox(width: 6),
+          Text(
+            name,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Colors.green.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      style: TextStyle(
+        color: Colors.grey.shade800,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        prefixIcon: Container(
+          padding: EdgeInsets.all(12),
+          margin: EdgeInsets.only(right: 12),
+          child: Icon(icon, color: Color(0xFF2C5F2D)),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF2C5F2D), width: 2),
+        ),
+        contentPadding: EdgeInsets.all(16),
       ),
     );
   }

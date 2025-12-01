@@ -29,7 +29,6 @@ class _ComplianceEntryPageState extends State<ComplianceEntryPage> {
   @override
   void initState() {
     super.initState();
-
     if (widget.existingData != null) _loadExisting();
   }
 
@@ -50,13 +49,12 @@ class _ComplianceEntryPageState extends State<ComplianceEntryPage> {
     fcUrl = d["fcFile"];
   }
 
-  DateTime? _toDate(dynamic t) {
-    if (t is Timestamp) return t.toDate();
-    return null;
-  }
+  DateTime? _toDate(dynamic t) => t is Timestamp ? t.toDate() : null;
 
-  // PICK DATE
-  Future<void> pickDate(Function(DateTime) onPicked) async {
+  // ---------------------------------------------------------------------------
+  // DATE PICKER
+  // ---------------------------------------------------------------------------
+  Future<void> _pickDate(Function(DateTime) onPicked) async {
     final d = await showDatePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -67,7 +65,9 @@ class _ComplianceEntryPageState extends State<ComplianceEntryPage> {
     setState(() {});
   }
 
-  // FILE UPLOAD
+  // ---------------------------------------------------------------------------
+  // FILE UPLOADER
+  // ---------------------------------------------------------------------------
   Future<String?> uploadFile() async {
     final pick = await FilePicker.platform.pickFiles(type: FileType.any);
     if (pick == null) return null;
@@ -76,7 +76,9 @@ class _ComplianceEntryPageState extends State<ComplianceEntryPage> {
     return await imgbb.uploadImage(file);
   }
 
+  // ---------------------------------------------------------------------------
   // SAVE OR UPDATE
+  // ---------------------------------------------------------------------------
   Future<void> saveEntry() async {
     final data = {
       "vehicleNumber": vehicleCtrl.text,
@@ -119,110 +121,272 @@ class _ComplianceEntryPageState extends State<ComplianceEntryPage> {
     final editing = widget.docId != null;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+
       appBar: AppBar(
-        title: Text(editing ? "Edit Compliance" : "Add Compliance"),
-        backgroundColor: Colors.teal,
+        title: Text(
+          editing ? "Edit Compliance" : "Add Compliance",
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.teal.shade800,
+        elevation: 0,
+        foregroundColor: Colors.white,
       ),
+
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         children: [
-          _field("Vehicle Number", vehicleCtrl),
+          _sectionCard(
+            icon: Icons.local_shipping,
+            title: "Vehicle Details",
+            children: [_inputField("Vehicle Number", vehicleCtrl)],
+          ),
 
-          _dateField(
-            "Insurance Start Date",
-            insuranceStart,
-            (d) => insuranceStart = d,
-          ),
-          _dateField(
-            "Insurance End Date",
-            insuranceEnd,
-            (d) => insuranceEnd = d,
-          ),
-          _dateField("Renewal Due Date", renewalDue, (d) => renewalDue = d),
-          _dateField(
-            "Pollution Licence Renewal",
-            pollutionRenew,
-            (d) => pollutionRenew = d,
-          ),
-          _dateField(
-            "Labor Insurance Renewal",
-            laborInsurance,
-            (d) => laborInsurance = d,
-          ),
-          _dateField("Vehicle FC Due Date", fcDue, (d) => fcDue = d),
+          const SizedBox(height: 20),
 
-          const SizedBox(height: 15),
-
-          _uploadButton(
-            "Upload Pollution Document",
-            pollutionUrl,
-            (url) => pollutionUrl = url,
+          _sectionCard(
+            icon: Icons.date_range,
+            title: "Insurance & Renewals",
+            children: [
+              _datePickerTile(
+                "Insurance Start Date",
+                insuranceStart,
+                (d) => insuranceStart = d,
+              ),
+              _datePickerTile(
+                "Insurance End Date",
+                insuranceEnd,
+                (d) => insuranceEnd = d,
+              ),
+              _datePickerTile(
+                "General Renewal Due Date",
+                renewalDue,
+                (d) => renewalDue = d,
+              ),
+            ],
           ),
-          _uploadButton(
-            "Upload Labor Insurance Document",
-            laborUrl,
-            (url) => laborUrl = url,
-          ),
-          _uploadButton("Upload FC Certificate", fcUrl, (url) => fcUrl = url),
 
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
+
+          _sectionCard(
+            icon: Icons.security,
+            title: "Compliance Renewals",
+            children: [
+              _datePickerTile(
+                "Pollution Licence Renewal",
+                pollutionRenew,
+                (d) => pollutionRenew = d,
+              ),
+              _datePickerTile(
+                "Labor Insurance Renewal",
+                laborInsurance,
+                (d) => laborInsurance = d,
+              ),
+              _datePickerTile("Vehicle FC Due Date", fcDue, (d) => fcDue = d),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          _sectionCard(
+            icon: Icons.file_present,
+            title: "Upload Compliance Documents",
+            children: [
+              _uploadTile(
+                "Pollution Document",
+                pollutionUrl,
+                (url) => pollutionUrl = url,
+              ),
+              _uploadTile(
+                "Labor Insurance Document",
+                laborUrl,
+                (url) => laborUrl = url,
+              ),
+              _uploadTile("FC Certificate", fcUrl, (url) => fcUrl = url),
+            ],
+          ),
+
+          const SizedBox(height: 32),
 
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              minimumSize: const Size(double.infinity, 50),
-            ),
             onPressed: saveEntry,
-            child: Text(editing ? "Update" : "Save"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              editing ? "Update Compliance" : "Save Compliance",
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _field(String label, TextEditingController c) {
+  // ---------------------------------------------------------------------------
+  // SECTION CARD
+  // ---------------------------------------------------------------------------
+  Widget _sectionCard({
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.teal.withOpacity(.15),
+                child: Icon(icon, color: Colors.teal.shade700, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // INPUT FIELD
+  // ---------------------------------------------------------------------------
+  Widget _inputField(String label, TextEditingController controller) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: c,
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: controller,
         decoration: InputDecoration(
+          filled: true,
           labelText: label,
-          border: const OutlineInputBorder(),
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
   }
 
-  Widget _dateField(String label, DateTime? value, Function(DateTime) pick) {
-    return ListTile(
-      title: Text(label),
-      subtitle: Text(
-        value == null ? "Select Date" : value.toString().split(" ").first,
+  // ---------------------------------------------------------------------------
+  // DATE PICKER TILE
+  // ---------------------------------------------------------------------------
+  Widget _datePickerTile(
+    String label,
+    DateTime? value,
+    Function(DateTime) onPicked,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
       ),
-      trailing: const Icon(Icons.calendar_today),
-      onTap: () => pickDate(pick),
+      child: InkWell(
+        onTap: () => _pickDate(onPicked),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today, color: Colors.teal.shade700),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                value == null
+                    ? label
+                    : "$label: ${value.toString().split(" ").first}",
+                style: const TextStyle(fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _uploadButton(String label, String? url, Function(String) onUploaded) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ElevatedButton.icon(
-          icon: const Icon(Icons.upload),
-          label: Text(label),
-          onPressed: () async {
-            final uploaded = await uploadFile();
-            if (uploaded != null) {
-              onUploaded(uploaded);
-              setState(() {});
-            }
-          },
-        ),
-        if (url != null)
-          Text("Uploaded ✔️", style: const TextStyle(color: Colors.green)),
-        const SizedBox(height: 8),
-      ],
+  // ---------------------------------------------------------------------------
+  // FILE UPLOAD TILE
+  // ---------------------------------------------------------------------------
+  Widget _uploadTile(String label, String? url, Function(String) onUploaded) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
+
+          const SizedBox(height: 10),
+
+          ElevatedButton.icon(
+            icon: const Icon(Icons.upload_file),
+            label: const Text("Choose File"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade600,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () async {
+              final uploaded = await uploadFile();
+              if (uploaded != null) {
+                onUploaded(uploaded);
+                setState(() {});
+              }
+            },
+          ),
+
+          if (url != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              "Uploaded ✔",
+              style: TextStyle(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

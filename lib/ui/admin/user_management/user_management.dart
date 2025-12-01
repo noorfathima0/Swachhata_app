@@ -17,35 +17,80 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   String _roleFilter = 'All';
   String _statusFilter = 'All';
 
-  final Color _primaryColor = Colors.teal;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
           "User Management",
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
         ),
-        backgroundColor: _primaryColor,
-        elevation: 2,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(Icons.supervisor_account_rounded, size: 26),
+        centerTitle: true,
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 16),
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Color(0xFF2C5F2D).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.supervisor_account_rounded,
+              color: Color(0xFF2C5F2D),
+              size: 20,
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
           _buildFilters(),
+          SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _firestore.collection('users').snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Loading Users...",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 var users = snapshot.data!.docs;
@@ -86,115 +131,200 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                 }
 
                 if (users.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "No users match your filters.",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  );
+                  return _buildEmptyState();
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final data = users[index].data() as Map<String, dynamic>;
-                    final userId = users[index].id;
-                    final role = (data['role'] ?? 'user').toString();
-                    final status = (data['status'] ?? 'active').toString();
-                    final isBlocked = status.toLowerCase() == 'blocked';
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: ListView.builder(
+                    physics: BouncingScrollPhysics(),
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final data = users[index].data() as Map<String, dynamic>;
+                      final userId = users[index].id;
+                      final role = (data['role'] ?? 'user').toString();
+                      final status = (data['status'] ?? 'active').toString();
+                      final isBlocked = status.toLowerCase() == 'blocked';
+                      final email = data['email'] ?? 'No email';
+                      final name = data['name'] ?? 'Unnamed User';
+                      final profileImage = data['profileImageUrl'];
 
-                    return Card(
-                      color: Colors.white,
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                      return AnimatedContainer(
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        margin: EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        leading: CircleAvatar(
-                          radius: 28,
-                          backgroundImage: data['profileImageUrl'] != null
-                              ? NetworkImage(data['profileImageUrl'])
-                              : const AssetImage('assets/default_profile.png')
-                                    as ImageProvider,
-                        ),
-                        title: Text(
-                          data['name'] ?? 'Unnamed User',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data['email'] ?? 'No email',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      AdminUserDetailPage(userId: userId),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
+                              );
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Row(
                                 children: [
-                                  Chip(
-                                    label: Text(
-                                      role[0].toUpperCase() + role.substring(1),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
+                                  // 👤 Profile Image
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                        width: 2,
                                       ),
+                                      image: profileImage != null
+                                          ? DecorationImage(
+                                              image: NetworkImage(profileImage),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : DecorationImage(
+                                              image: AssetImage(
+                                                'assets/default_profile.png',
+                                              ),
+                                              fit: BoxFit.cover,
+                                            ),
                                     ),
-                                    backgroundColor: _primaryColor,
-                                    padding: EdgeInsets.zero,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Chip(
-                                    label: Text(
-                                      status[0].toUpperCase() +
-                                          status.substring(1),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
+                                  SizedBox(width: 16),
+
+                                  // 📝 User Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                name,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 17,
+                                                  color: Colors.grey.shade800,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    _getRoleColor(role),
+                                                    _getRoleColor(
+                                                      role,
+                                                    ).withOpacity(0.8),
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                role.toUpperCase(),
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          email,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: isBlocked
+                                                    ? Colors.red.shade50
+                                                    : Colors.green.shade50,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                isBlocked
+                                                    ? Icons.block_rounded
+                                                    : Icons
+                                                          .check_circle_rounded,
+                                                color: isBlocked
+                                                    ? Colors.red.shade600
+                                                    : Colors.green.shade600,
+                                                size: 14,
+                                              ),
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              status,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Spacer(),
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade100,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.arrow_forward_ios_rounded,
+                                                color: Colors.grey.shade600,
+                                                size: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
-                                    backgroundColor: isBlocked
-                                        ? Colors.redAccent
-                                        : Colors.green.shade400,
-                                    padding: EdgeInsets.zero,
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                        trailing: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: Colors.grey[600],
-                          size: 18,
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  AdminUserDetailPage(userId: userId),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -204,21 +334,86 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
     );
   }
 
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Color(0xFF2C5F2D);
+      case 'user':
+        return Color(0xFF3498DB);
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Color(0xFF27AE60);
+      case 'blocked':
+        return Colors.red.shade600;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
   // 🎛️ Filters Section
   Widget _buildFilters() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: EdgeInsets.all(20),
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.filter_list_rounded,
+                  color: Colors.blue.shade600,
+                  size: 20,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                "Filter Users",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+
           // 🔍 Search Bar
           TextField(
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search, color: Colors.teal),
+              prefixIcon: Container(
+                padding: EdgeInsets.all(12),
+                child: Icon(Icons.search_rounded, color: Color(0xFF2C5F2D)),
+              ),
               hintText: "Search by name or email",
+              hintStyle: TextStyle(color: Colors.grey.shade500),
               filled: true,
-              fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              fillColor: Colors.grey.shade50,
+              contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
@@ -229,60 +424,251 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.teal, width: 1.5),
+                borderSide: BorderSide(color: Color(0xFF2C5F2D), width: 2),
               ),
             ),
             onChanged: (value) => setState(() => _searchQuery = value),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 16),
 
           // 🧩 Role & Status Filters
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _roleFilter,
-                  decoration: InputDecoration(
-                    labelText: "Role",
-                    labelStyle: const TextStyle(fontSize: 13),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Role",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _roleFilter,
+                          icon: Icon(
+                            Icons.arrow_drop_down_rounded,
+                            color: Color(0xFF2C5F2D),
+                          ),
+                          isExpanded: true,
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          items: ['All', 'Admin', 'User']
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r,
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    child: Text(
+                                      r,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade800,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _roleFilter = val!),
+                        ),
+                      ),
                     ),
-                  ),
-                  items: ['All', 'Admin', 'User']
-                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                      .toList(),
-                  onChanged: (val) => setState(() => _roleFilter = val!),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 16),
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _statusFilter,
-                  decoration: InputDecoration(
-                    labelText: "Status",
-                    labelStyle: const TextStyle(fontSize: 13),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Status",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _statusFilter,
+                          icon: Icon(
+                            Icons.arrow_drop_down_rounded,
+                            color: Color(0xFF2C5F2D),
+                          ),
+                          isExpanded: true,
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          items: ['All', 'Active', 'Blocked']
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r,
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(r),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Text(
+                                          r,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _statusFilter = val!),
+                        ),
+                      ),
                     ),
-                  ),
-                  items: ['All', 'Active', 'Blocked']
-                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                      .toList(),
-                  onChanged: (val) => setState(() => _statusFilter = val!),
+                  ],
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.people_outline_rounded,
+                size: 70,
+                color: Colors.grey.shade300,
+              ),
+            ),
+            SizedBox(height: 24),
+            Text(
+              "No Users Found",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+                letterSpacing: 0.3,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? "No users match your search query"
+                  : _roleFilter != 'All' || _statusFilter != 'All'
+                  ? "No users match the selected filters"
+                  : "No users registered yet",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 24),
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF2C5F2D).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                icon: Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                label: Text(
+                  "Clear Filters",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _searchQuery = '';
+                    _roleFilter = 'All';
+                    _statusFilter = 'All';
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

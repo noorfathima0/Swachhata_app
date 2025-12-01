@@ -100,21 +100,64 @@ class _EditAdminProfilePageState extends State<EditAdminProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _selectedLanguage == 'kn'
-                  ? "ಪ್ರೊಫೈಲ್ ಯಶಸ್ವಿಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ"
-                  : "Profile updated successfully",
+            content: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xFF27AE60),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    _selectedLanguage == 'kn'
+                        ? "ಪ್ರೊಫೈಲ್ ಯಶಸ್ವಿಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ"
+                        : "Profile updated successfully",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            backgroundColor: Colors.teal,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       debugPrint("Error saving profile: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "Error: $e",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -125,161 +168,429 @@ class _EditAdminProfilePageState extends State<EditAdminProfilePage> {
     final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(loc.editProfile),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          loc.editProfile,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _isSaving ? null : _saveProfile,
+          Container(
+            margin: EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: _isSaving
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Icon(Icons.save_rounded, color: Colors.white, size: 20),
+              onPressed: _isSaving ? null : _saveProfile,
+            ),
           ),
         ],
       ),
       body: _isSaving
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    "Saving Profile...",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 👤 Profile Image
-                    Center(
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          CircleAvatar(
-                            radius: 65,
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage: _imageFile != null
-                                ? FileImage(_imageFile!)
-                                : (_imageUrl != null && _imageUrl!.isNotEmpty
-                                      ? NetworkImage(_imageUrl!)
-                                      : null),
-                            child:
-                                (_imageFile == null &&
-                                    (_imageUrl == null || _imageUrl!.isEmpty))
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 65,
-                                    color: Colors.grey,
-                                  )
-                                : null,
+                    // 👤 Profile Image Section
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 4,
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.teal,
-                              ),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Profile Picture",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                    width: 3,
+                                  ),
+                                  image: _imageFile != null
+                                      ? DecorationImage(
+                                          image: FileImage(_imageFile!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : (_imageUrl != null &&
+                                                _imageUrl!.isNotEmpty
+                                            ? DecorationImage(
+                                                image: NetworkImage(_imageUrl!),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null),
                                 ),
-                                onPressed: _pickImage,
+                                child:
+                                    (_imageFile == null &&
+                                        (_imageUrl == null ||
+                                            _imageUrl!.isEmpty))
+                                    ? Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: Colors.grey.shade400,
+                                      )
+                                    : null,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0xFF2C5F2D),
+                                        Color(0xFF1E3A1E),
+                                      ],
+                                    ),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 6,
+                                        offset: Offset(2, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _pickImage,
+                            child: Text(
+                              "Change Photo",
+                              style: TextStyle(
+                                color: Color(0xFF2C5F2D),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    SizedBox(height: 24),
 
-                    _buildTextField(
-                      controller: _nameController,
-                      label: loc.name,
-                      icon: Icons.person,
-                      validator: (v) => v!.isEmpty ? loc.enterName : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: loc.phone,
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      validator: (v) => v!.isEmpty ? loc.enterPhone : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildTextField(
-                      controller: _bioController,
-                      label: loc.bio,
-                      icon: Icons.info_outline,
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 🌐 Language Card
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    // 📝 Personal Information Section
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Personal Information",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+
+                          _buildTextField(
+                            controller: _nameController,
+                            label: loc.name,
+                            icon: Icons.person_outline_rounded,
+                            validator: (v) => v!.isEmpty ? loc.enterName : null,
+                          ),
+                          SizedBox(height: 16),
+
+                          _buildTextField(
+                            controller: _phoneController,
+                            label: loc.phone,
+                            icon: Icons.phone_iphone_rounded,
+                            keyboardType: TextInputType.phone,
+                            validator: (v) =>
+                                v!.isEmpty ? loc.enterPhone : null,
+                          ),
+                          SizedBox(height: 16),
+
+                          _buildTextField(
+                            controller: _bioController,
+                            label: loc.bio,
+                            icon: Icons.info_outline_rounded,
+                            maxLines: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 24),
+
+                    // 🌐 Language Preference Section
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Language Preference",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Icon(Icons.language, color: Colors.teal),
-                                const SizedBox(width: 10),
-                                Text(
-                                  loc.language,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.language_rounded,
+                                        color: Colors.orange.shade600,
+                                        size: 22,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      loc.language,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                DropdownButton<String>(
+                                  value: _selectedLanguage,
+                                  underline: SizedBox(),
+                                  dropdownColor: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _selectedLanguage = val);
+                                    }
+                                  },
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: 'en',
+                                      child: Row(
+                                        children: [
+                                          Text('🇺🇸'),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'English',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'kn',
+                                      child: Row(
+                                        children: [
+                                          Text('🇮🇳'),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'ಕನ್ನಡ',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 32),
+
+                    // 💾 Save Button
+                    Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF2C5F2D).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        icon: _isSaving
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
                                   ),
                                 ),
-                              ],
-                            ),
-                            DropdownButton<String>(
-                              value: _selectedLanguage,
-                              underline: const SizedBox(),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() => _selectedLanguage = val);
-                                }
-                              },
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'en',
-                                  child: Text('English'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'kn',
-                                  child: Text('ಕನ್ನಡ'),
-                                ),
-                              ],
-                            ),
-                          ],
+                              )
+                            : Icon(
+                                Icons.save_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                        label: Text(
+                          _isSaving ? "Saving..." : loc.save,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
                         ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 24),
+                        ),
+                        onPressed: _isSaving ? null : _saveProfile,
                       ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.save),
-                      label: Text(loc.save),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal.shade600,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 50,
-                          vertical: 14,
-                        ),
-                      ),
-                      onPressed: _isSaving ? null : _saveProfile,
                     ),
                   ],
                 ),
@@ -301,12 +612,33 @@ class _EditAdminProfilePageState extends State<EditAdminProfilePage> {
       validator: validator,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      style: TextStyle(
+        color: Colors.grey.shade800,
+        fontWeight: FontWeight.w500,
+      ),
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.teal),
+        prefixIcon: Container(
+          padding: EdgeInsets.all(12),
+          margin: EdgeInsets.only(right: 12),
+          child: Icon(icon, color: Color(0xFF2C5F2D)),
+        ),
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF2C5F2D), width: 2),
+        ),
         filled: true,
         fillColor: Colors.grey.shade50,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

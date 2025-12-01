@@ -15,10 +15,10 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
   final ComplaintService _service = ComplaintService();
 
   final Map<String, Color> _statusColors = {
-    "Submitted": Colors.orange,
-    "In-Progress": Colors.blue,
-    "Resolved": Colors.green,
-    "Rejected": Colors.red,
+    "Submitted": Color(0xFF3498DB),
+    "In-Progress": Color(0xFFE67E22),
+    "Resolved": Color(0xFF27AE60),
+    "Rejected": Colors.red.shade600,
   };
 
   Color _getStatusColor(String status) => _statusColors[status] ?? Colors.grey;
@@ -41,35 +41,63 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        elevation: 3,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF00695C), Color(0xFF00695C)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: const Text(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text(
           "Complaint Management",
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+            fontSize: 20,
+          ),
         ),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          const SizedBox(height: 12),
+          SizedBox(height: 20),
           _buildStats(),
-          const SizedBox(height: 8),
+          SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _service.getAllComplaints(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Loading Complaints...",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -78,121 +106,176 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
 
                 final complaints = snapshot.data!.docs;
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: complaints.length,
-                  itemBuilder: (context, index) {
-                    final doc = complaints[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final date = (data['createdAt'] as Timestamp?)?.toDate();
-                    final formattedDate = date != null
-                        ? DateFormat('dd MMM yyyy, hh:mm a').format(date)
-                        : 'N/A';
-                    final status = data['status'] ?? 'Unknown';
-                    final type = data['type'] ?? 'Unknown';
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: ListView.builder(
+                    physics: BouncingScrollPhysics(),
+                    itemCount: complaints.length,
+                    itemBuilder: (context, index) {
+                      final doc = complaints[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final date = (data['createdAt'] as Timestamp?)?.toDate();
+                      final formattedDate = date != null
+                          ? DateFormat('dd MMM yyyy, hh:mm a').format(date)
+                          : 'N/A';
+                      final status = data['status'] ?? 'Unknown';
+                      final type = data['type'] ?? 'Unknown';
 
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.15),
-                            spreadRadius: 1,
-                            blurRadius: 6,
-                            offset: const Offset(2, 3),
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(14),
-                        leading: CircleAvatar(
-                          radius: 26,
-                          backgroundColor: _getStatusColor(
-                            status,
-                          ).withOpacity(0.12),
-                          child: Icon(
-                            _getTypeIcon(type),
-                            color: _getStatusColor(status),
-                            size: 26,
-                          ),
+                      return AnimatedContainer(
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        margin: EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        title: Text(
-                          type,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 6.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data['description'] ?? 'No description',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontSize: 13.5,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ComplaintDetailPage(data: doc),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
+                              );
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
+                                    padding: EdgeInsets.all(14),
                                     decoration: BoxDecoration(
                                       color: _getStatusColor(
                                         status,
-                                      ).withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(10),
+                                      ).withOpacity(0.1),
+                                      shape: BoxShape.circle,
                                     ),
-                                    child: Text(
-                                      status,
-                                      style: TextStyle(
-                                        color: _getStatusColor(status),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    child: Icon(
+                                      _getTypeIcon(type),
+                                      color: _getStatusColor(status),
+                                      size: 24,
                                     ),
                                   ),
-                                  const Spacer(),
-                                  Text(
-                                    formattedDate,
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 12,
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                type,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 17,
+                                                  color: Colors.grey.shade800,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    _getStatusColor(status),
+                                                    _getStatusColor(
+                                                      status,
+                                                    ).withOpacity(0.8),
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                status,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          data['description'] ??
+                                              'No description',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                        SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.access_time_rounded,
+                                              size: 16,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              formattedDate,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade500,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Spacer(),
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade100,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.arrow_forward_ios_rounded,
+                                                color: Colors.grey.shade600,
+                                                size: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                        trailing: const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: Colors.grey,
-                          size: 18,
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ComplaintDetailPage(data: doc),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -204,11 +287,11 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
 
   Widget _buildStats() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 20),
       child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const SizedBox(height: 70);
+          if (!snapshot.hasData) return SizedBox(height: 100);
 
           final complaints = snapshot.data!.docs;
           final total = complaints.length;
@@ -218,14 +301,19 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
           final inProgress = complaints
               .where((doc) => (doc['status'] ?? '') == 'In-Progress')
               .length;
+          final submitted = complaints
+              .where((doc) => (doc['status'] ?? '') == 'Submitted')
+              .length;
 
           return Row(
             children: [
-              _buildStatCard("Total", total, Colors.indigo),
-              const SizedBox(width: 8),
-              _buildStatCard("Resolved", resolved, Colors.green),
-              const SizedBox(width: 8),
-              _buildStatCard("In Progress", inProgress, Colors.orange),
+              _buildStatCard("Total", total, Color(0xFF3498DB)),
+              SizedBox(width: 12),
+              _buildStatCard("Resolved", resolved, Color(0xFF27AE60)),
+              SizedBox(width: 12),
+              _buildStatCard("In Progress", inProgress, Color(0xFFE67E22)),
+              SizedBox(width: 12),
+              _buildStatCard("Submitted", submitted, Color(0xFF9B59B6)),
             ],
           );
         },
@@ -236,34 +324,47 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
   Widget _buildStatCard(String title, int count, Color color) {
     return Expanded(
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        padding: const EdgeInsets.all(14),
+        duration: Duration(milliseconds: 400),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: 13.5,
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
+              child: Icon(_getStatIcon(title), color: color, size: 18),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 12),
             Text(
               count.toString(),
               style: TextStyle(
                 color: color,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -272,28 +373,110 @@ class _AdminComplaintPageState extends State<AdminComplaintPage> {
     );
   }
 
+  IconData _getStatIcon(String title) {
+    switch (title) {
+      case 'Total':
+        return Icons.list_alt_rounded;
+      case 'Resolved':
+        return Icons.check_circle_rounded;
+      case 'In Progress':
+        return Icons.update_rounded;
+      case 'Submitted':
+        return Icons.pending_actions_rounded;
+      default:
+        return Icons.analytics_rounded;
+    }
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_rounded, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.inbox_rounded,
+                size: 70,
+                color: Colors.grey.shade300,
+              ),
+            ),
+            SizedBox(height: 24),
             Text(
               "No Complaints Found",
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+                letterSpacing: 0.3,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 12),
             Text(
-              "All new complaints will appear here automatically.",
+              "All new complaints will appear here automatically for review and action.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500]),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 24),
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF2C5F2D), Color(0xFF1E3A1E)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF2C5F2D).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                icon: Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                label: Text(
+                  "Refresh",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {});
+                },
+              ),
             ),
           ],
         ),
