@@ -23,15 +23,25 @@ class _PostDetailPageState extends State<PostDetailPage> {
   final TextEditingController _commentController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
   int _currentImageIndex = 0;
 
-  final Color _primaryColor = Colors.teal;
-  final Color _primaryDark = const Color(0xFF00695C);
-  final Color _primaryLight = const Color(0xFF4DB6AC);
-  final Color _backgroundColor = const Color(0xFFF8F9FA);
-  final Color _cardColor = Colors.white;
+  /// --- BLUE THEME MATCHING USER FORUM PAGE ---
+  final Color primaryColor = const Color(0xFF2196F3);
+  final Color primaryDark = const Color(0xFF1976D2);
+  final Color primaryLight = const Color(0xFF64B5F6);
+  final LinearGradient primaryGradient = const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+  );
 
-  void _showFullImageDialog(BuildContext context, String imageUrl) {
+  final Color backgroundColor = const Color(0xFFF5F7FA);
+
+  // -------------------------------------
+  // FULLSCREEN IMAGE DIALOG
+  // -------------------------------------
+  void _showFullImageDialog(String imageUrl) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -46,7 +56,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => Container(
                   height: 300,
-                  color: _primaryLight.withOpacity(0.1),
+                  color: primaryLight.withOpacity(0.1),
                   child: const Center(
                     child: Icon(
                       Icons.broken_image,
@@ -71,13 +81,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
+  // -------------------------------------
+  // ADD COMMENT
+  // -------------------------------------
   Future<void> _addComment() async {
     final user = _auth.currentUser;
     final loc = AppLocalizations.of(context)!;
-    if (user == null || _commentController.text.trim().isEmpty) {
-      // optionally show a localized message here
-      return;
-    }
+
+    if (user == null || _commentController.text.trim().isEmpty) return;
 
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
@@ -86,41 +97,46 @@ class _PostDetailPageState extends State<PostDetailPage> {
         user.displayName ??
         user.email?.split('@').first ??
         loc.anonymous;
+
     String profileImageUrl = userDoc.data()?['profileImageUrl'] ?? '';
 
     final commentData = {
-      'userId': user.uid,
-      'userName': userName,
-      'userProfileUrl': profileImageUrl,
-      'text': _commentController.text.trim(),
-      'createdAt': Timestamp.now(),
+      "userId": user.uid,
+      "userName": userName,
+      "userProfileUrl": profileImageUrl,
+      "text": _commentController.text.trim(),
+      "createdAt": Timestamp.now(),
     };
 
     await _firestore
-        .collection('posts')
+        .collection("posts")
         .doc(widget.postId)
-        .collection('comments')
+        .collection("comments")
         .add(commentData);
 
-    await _firestore.collection('posts').doc(widget.postId).update({
+    await _firestore.collection("posts").doc(widget.postId).update({
       'commentsCount': FieldValue.increment(1),
     });
 
     _commentController.clear();
   }
 
-  Future<void> _toggleLike(List<dynamic> likes) async {
+  // -------------------------------------
+  // LIKE / UNLIKE
+  // -------------------------------------
+  Future<void> _toggleLike(List likes) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final postRef = _firestore.collection('posts').doc(widget.postId);
+    final ref = _firestore.collection("posts").doc(widget.postId);
+
     if (likes.contains(user.uid)) {
-      await postRef.update({
-        'likes': FieldValue.arrayRemove([user.uid]),
+      await ref.update({
+        "likes": FieldValue.arrayRemove([user.uid]),
       });
     } else {
-      await postRef.update({
-        'likes': FieldValue.arrayUnion([user.uid]),
+      await ref.update({
+        "likes": FieldValue.arrayUnion([user.uid]),
       });
     }
   }
@@ -128,79 +144,115 @@ class _PostDetailPageState extends State<PostDetailPage> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final user = _auth.currentUser;
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
           loc.postDetails,
           style: const TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: _primaryColor,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(gradient: primaryGradient),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
+
+      // -------------------------------------
+      // POST STREAM
+      // -------------------------------------
       body: StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('posts').doc(widget.postId).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+        stream: _firestore.collection("posts").doc(widget.postId).snapshots(),
+        builder: (context, snap) {
+          if (!snap.hasData) {
             return Center(
-              child: CircularProgressIndicator(color: _primaryColor),
+              child: CircularProgressIndicator(color: primaryColor),
             );
           }
 
-          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final data = snap.data!.data() as Map<String, dynamic>;
+
           final List<String> mediaUrls =
-              (data['mediaUrls'] as List?)?.cast<String>() ?? [];
-          final List<dynamic> likes = data['likes'] is List
-              ? data['likes'] as List
-              : [];
-          final bool isLiked = user != null && likes.contains(user.uid);
-          final adminName = data['adminName'] ?? loc.user;
-          final content = data['content'] ?? '';
-          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-          final formattedDate = createdAt != null
-              ? DateFormat('dd MMM, hh:mm a').format(createdAt)
+              (data["mediaUrls"] as List?)?.cast<String>() ?? [];
+          final List likes = data["likes"] ?? [];
+          final bool isLiked =
+              _auth.currentUser != null &&
+              likes.contains(_auth.currentUser!.uid);
+
+          final String adminName = data["adminName"] ?? loc.user;
+          final String content = data["content"] ?? "";
+          final String profileImageUrl = data["profileImageUrl"] ?? "";
+
+          final createdAt = (data["createdAt"] as Timestamp?)?.toDate();
+          final date = createdAt != null
+              ? DateFormat("dd MMM, hh:mm a").format(createdAt)
               : loc.unknownDate;
-          final profileImageUrl = data['profileImageUrl'] ?? '';
 
           return Column(
             children: [
               Expanded(
                 child: ListView(
                   children: [
-                    // 🖼️ Post Images
+                    // -------------------------------------
+                    // IMAGE CAROUSEL
+                    // -------------------------------------
                     if (mediaUrls.isNotEmpty)
-                      CarouselSlider(
-                        options: CarouselOptions(
-                          height: 320,
-                          enlargeCenterPage: true,
-                          enableInfiniteScroll: false,
-                          viewportFraction: 1,
-                          onPageChanged: (i, _) =>
-                              setState(() => _currentImageIndex = i),
-                        ),
-                        items: mediaUrls.map((url) {
-                          return GestureDetector(
-                            onTap: () => _showFullImageDialog(context, url),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.network(
-                                url,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.broken_image, size: 80),
-                              ),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CarouselSlider(
+                            options: CarouselOptions(
+                              height: 300,
+                              viewportFraction: 1.0,
+                              enlargeCenterPage: false,
+                              autoPlay: mediaUrls.length > 1,
+                              onPageChanged: (i, _) {
+                                setState(() => _currentImageIndex = i);
+                              },
                             ),
-                          );
-                        }).toList(),
+                            items: mediaUrls.map((url) {
+                              return GestureDetector(
+                                onTap: () => _showFullImageDialog(url),
+                                child: Image.network(
+                                  url,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder: (_, __, ___) =>
+                                      const Icon(Icons.broken_image, size: 80),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
                       ),
 
-                    // 👤 Post Info
+                    // Indicator
+                    if (mediaUrls.length > 1)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            "${_currentImageIndex + 1}/${mediaUrls.length}",
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // -------------------------------------
+                    // USER HEADER
+                    // -------------------------------------
                     ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: _primaryLight,
+                        backgroundColor: primaryLight,
                         backgroundImage: profileImageUrl.isNotEmpty
                             ? NetworkImage(profileImageUrl)
                             : null,
@@ -212,21 +264,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         adminName,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: _primaryDark,
+                          color: primaryDark,
                         ),
                       ),
                       subtitle: Text(
-                        formattedDate,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        date,
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ),
 
-                    // 📝 Post Content
+                    // -------------------------------------
+                    // POST CONTENT
+                    // -------------------------------------
                     Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16),
                       child: Text(
                         content,
                         style: const TextStyle(
@@ -237,66 +288,87 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       ),
                     ),
 
-                    // ❤️ Likes
+                    // -------------------------------------
+                    // LIKES
+                    // -------------------------------------
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
                           IconButton(
+                            onPressed: () => _toggleLike(likes),
                             icon: Icon(
-                              isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: isLiked ? Colors.red : _primaryColor,
+                              isLiked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: isLiked ? Colors.red : primaryColor,
+                              size: 26,
                             ),
-                            onPressed: user == null
-                                ? null
-                                : () => _toggleLike(likes),
                           ),
                           Text(
                             "${likes.length} ${loc.likes}",
-                            style: const TextStyle(fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
                     ),
 
-                    const Divider(),
+                    const Divider(height: 30),
 
-                    // 💬 Comments Section
+                    // -------------------------------------
+                    // COMMENTS SECTION TITLE
+                    // -------------------------------------
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         loc.comments,
-                        style: const TextStyle(
+                        style: TextStyle(
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          color: primaryDark,
                         ),
                       ),
                     ),
 
+                    const SizedBox(height: 12),
+
+                    // -------------------------------------
+                    // COMMENTS STREAM
+                    // -------------------------------------
                     StreamBuilder<QuerySnapshot>(
                       stream: _firestore
-                          .collection('posts')
+                          .collection("posts")
                           .doc(widget.postId)
-                          .collection('comments')
-                          .orderBy('createdAt', descending: true)
+                          .collection("comments")
+                          .orderBy("createdAt", descending: true)
                           .snapshots(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
+                      builder: (context, snap) {
+                        if (!snap.hasData) {
                           return Center(
                             child: CircularProgressIndicator(
-                              color: _primaryColor,
+                              color: primaryColor,
                             ),
                           );
                         }
 
-                        final comments = snapshot.data!.docs;
+                        final comments = snap.data!.docs;
+
                         if (comments.isEmpty) {
                           return Padding(
                             padding: const EdgeInsets.all(16),
-                            child: Text(loc.noCommentsYet),
+                            child: Text(
+                              loc.noCommentsYet,
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                              ),
+                            ),
                           );
                         }
 
@@ -304,26 +376,25 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: comments.length,
-                          itemBuilder: (context, index) {
-                            final comment =
-                                comments[index].data() as Map<String, dynamic>;
-                            final createdAt =
-                                (comment['createdAt'] as Timestamp?)?.toDate();
-                            final formattedDate = createdAt != null
+                          itemBuilder: (_, i) {
+                            final c =
+                                comments[i].data() as Map<String, dynamic>;
+                            final createdAt = (c['createdAt'] as Timestamp?)
+                                ?.toDate();
+                            final formatted = createdAt != null
                                 ? DateFormat(
-                                    'dd MMM, hh:mm a',
+                                    "dd MMM, hh:mm a",
                                   ).format(createdAt)
-                                : '';
-                            final userProfileUrl =
-                                comment['userProfileUrl'] ?? '';
+                                : "";
 
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: _primaryLight,
-                                backgroundImage: userProfileUrl.isNotEmpty
-                                    ? NetworkImage(userProfileUrl)
+                                backgroundColor: primaryLight,
+                                backgroundImage:
+                                    c["userProfileUrl"]?.isNotEmpty == true
+                                    ? NetworkImage(c["userProfileUrl"])
                                     : null,
-                                child: userProfileUrl.isEmpty
+                                child: c["userProfileUrl"] == ""
                                     ? const Icon(
                                         Icons.person,
                                         color: Colors.white,
@@ -331,19 +402,19 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     : null,
                               ),
                               title: Text(
-                                comment['userName'] ?? loc.anonymous,
+                                c["userName"] ?? loc.anonymous,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: _primaryDark,
+                                  color: primaryDark,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(comment['text'] ?? ''),
+                                  Text(c["text"] ?? ""),
                                   const SizedBox(height: 4),
                                   Text(
-                                    formattedDate,
+                                    formatted,
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.grey,
@@ -356,19 +427,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
+
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
 
-              // ✍️ Comment Input
+              // -------------------------------------
+              // COMMENT INPUT
+              // -------------------------------------
               SafeArea(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
-                  color: Colors.white,
+                  decoration: const BoxDecoration(color: Colors.white),
                   child: Row(
                     children: [
                       Expanded(
@@ -381,7 +455,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.send, color: _primaryColor),
+                        icon: Icon(Icons.send_rounded, color: primaryColor),
                         onPressed: _addComment,
                       ),
                     ],

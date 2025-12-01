@@ -13,17 +13,22 @@ class UserEventsPage extends StatefulWidget {
 
 class _UserEventsPageState extends State<UserEventsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
   Map<DateTime, List<Map<String, dynamic>>> _eventsByDate = {};
   List<Map<String, dynamic>> _allEvents = [];
 
-  // Color scheme
-  final Color _primaryColor = Colors.teal;
-  final Color _primaryDark = Color(0xFF00695C);
-  final Color _primaryLight = Color(0xFF4DB6AC);
-  final Color _backgroundColor = Color(0xFFF8F9FA);
-  final Color _cardColor = Colors.white;
+  String _filterType = "all"; // all, upcoming, past
+
+  final Color primaryColor = const Color(0xFF673AB7);
+  final Color primaryDark = const Color(0xFF512DA8);
+  final LinearGradient primaryGradient = const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF673AB7), Color(0xFF512DA8)],
+  );
 
   @override
   void initState() {
@@ -33,12 +38,14 @@ class _UserEventsPageState extends State<UserEventsPage> {
 
   Future<void> _fetchEvents() async {
     final snapshot = await _firestore.collection('events').get();
+
     final Map<DateTime, List<Map<String, dynamic>>> grouped = {};
     final List<Map<String, dynamic>> all = [];
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
       if (data['eventDate'] == null) continue;
+
       final eventDate = (data['eventDate'] as Timestamp).toDate();
       final dateKey = DateTime(eventDate.year, eventDate.month, eventDate.day);
 
@@ -48,7 +55,6 @@ class _UserEventsPageState extends State<UserEventsPage> {
       all.add({...data, 'id': doc.id});
     }
 
-    // Sort events by date (upcoming first)
     all.sort((a, b) {
       final dateA = (a['eventDate'] as Timestamp).toDate();
       final dateB = (b['eventDate'] as Timestamp).toDate();
@@ -62,312 +68,264 @@ class _UserEventsPageState extends State<UserEventsPage> {
   }
 
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
-    final dateKey = DateTime(day.year, day.month, day.day);
-    return _eventsByDate[dateKey] ?? [];
+    final key = DateTime(day.year, day.month, day.day);
+    return _eventsByDate[key] ?? [];
   }
 
-  bool _isUpcoming(DateTime eventDate) {
-    return eventDate.isAfter(DateTime.now());
+  bool _isUpcoming(DateTime date) => date.isAfter(DateTime.now());
+  bool _isPast(DateTime date) => date.isBefore(DateTime.now());
+
+  List<Map<String, dynamic>> _applyFilter(List<Map<String, dynamic>> events) {
+    if (_filterType == "upcoming") {
+      return events
+          .where((e) => _isUpcoming((e['eventDate'] as Timestamp).toDate()))
+          .toList();
+    } else if (_filterType == "past") {
+      return events
+          .where((e) => _isPast((e['eventDate'] as Timestamp).toDate()))
+          .toList();
+    }
+    return events;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine which list to show
-    final List<Map<String, dynamic>> displayedEvents = _selectedDay != null
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = dark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+    final cardColor = dark ? const Color(0xFF1E1E1E) : Colors.white;
+
+    List<Map<String, dynamic>> events = _selectedDay != null
         ? _getEventsForDay(_selectedDay!)
         : _allEvents;
 
+    events = _applyFilter(events);
+
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text(
           "Community Events",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
-        backgroundColor: _primaryColor,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(gradient: primaryGradient),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: Column(
-        children: [
-          // --- Calendar View ---
-          Card(
-            elevation: 3,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // HEADER
+            Container(
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.white24,
+                    child: const Icon(
+                      Icons.event_available,
+                      size: 30,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    "Community Events",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+
+            // CALENDAR (NOW SCROLLS!)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: TableCalendar(
-                firstDay: DateTime.utc(2023, 1, 1),
+                firstDay: DateTime.utc(2022, 1, 1),
                 lastDay: DateTime.utc(2030, 12, 31),
                 focusedDay: _focusedDay,
                 selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
                 eventLoader: _getEventsForDay,
-                onDaySelected: (selectedDay, focusedDay) {
+                onDaySelected: (selected, focused) {
                   setState(() {
-                    if (_selectedDay != null &&
-                        isSameDay(_selectedDay, selectedDay)) {
-                      // If same date clicked again → deselect (show all)
-                      _selectedDay = null;
-                    } else {
-                      _selectedDay = selectedDay;
-                    }
-                    _focusedDay = focusedDay;
+                    _selectedDay = isSameDay(_selectedDay, selected)
+                        ? null
+                        : selected;
+                    _focusedDay = focused;
                   });
                 },
                 headerStyle: HeaderStyle(
-                  formatButtonVisible: false,
                   titleCentered: true,
+                  formatButtonVisible: false,
                   titleTextStyle: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: _primaryDark,
-                    fontSize: 16,
-                  ),
-                  leftChevronIcon: Icon(
-                    Icons.chevron_left,
-                    color: _primaryColor,
-                    size: 24,
-                  ),
-                  rightChevronIcon: Icon(
-                    Icons.chevron_right,
-                    color: _primaryColor,
-                    size: 24,
-                  ),
-                ),
-                calendarStyle: CalendarStyle(
-                  markerDecoration: BoxDecoration(
-                    color: _primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  todayDecoration: BoxDecoration(
-                    color: _primaryLight,
-                    shape: BoxShape.circle,
-                  ),
-                  selectedDecoration: BoxDecoration(
-                    color: _primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  defaultTextStyle: TextStyle(color: Colors.grey[800]),
-                  weekendTextStyle: TextStyle(color: Colors.grey[800]),
-                  holidayTextStyle: TextStyle(color: Colors.grey[800]),
-                ),
-                daysOfWeekStyle: DaysOfWeekStyle(
-                  weekdayStyle: TextStyle(
-                    color: _primaryDark,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  weekendStyle: TextStyle(
-                    color: _primaryDark,
-                    fontWeight: FontWeight.w600,
+                    color: dark ? Colors.white : primaryDark,
                   ),
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _selectedDay == null
-                    ? "All Events"
-                    : "Events on ${DateFormat('dd MMM yyyy').format(_selectedDay!)}",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: _primaryDark,
+            const SizedBox(height: 16),
+
+            // FILTER BUTTONS
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ToggleButtons(
+                borderRadius: BorderRadius.circular(12),
+                selectedColor: Colors.white,
+                fillColor: primaryColor,
+                color: primaryColor,
+                isSelected: [
+                  _filterType == "all",
+                  _filterType == "upcoming",
+                  _filterType == "past",
+                ],
+                onPressed: (i) {
+                  setState(() {
+                    _filterType = ["all", "upcoming", "past"][i];
+                  });
+                },
+                children: const [
+                  Padding(padding: EdgeInsets.all(8), child: Text("All")),
+                  Padding(padding: EdgeInsets.all(8), child: Text("Upcoming")),
+                  Padding(padding: EdgeInsets.all(8), child: Text("Past")),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // TITLE
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _selectedDay == null
+                      ? "${_filterType[0].toUpperCase()}${_filterType.substring(1)} Events"
+                      : "Events on ${DateFormat('dd MMM yyyy').format(_selectedDay!)}",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: dark ? Colors.white : primaryDark,
+                  ),
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-          // --- Events List ---
-          Expanded(
-            child: displayedEvents.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.event_busy, size: 64, color: _primaryLight),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No events available",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: _primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _selectedDay == null
-                              ? "Check back later for new events"
-                              : "No events scheduled for this date",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    itemCount: displayedEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = displayedEvents[index];
-                      final title = event['title'] ?? 'Untitled Event';
-                      final description =
-                          event['description'] ?? 'No description available';
-                      final eventDate = (event['eventDate'] as Timestamp)
-                          .toDate();
-                      final formattedDate = DateFormat(
-                        'dd MMM yyyy, hh:mm a',
-                      ).format(eventDate);
+            // EVENTS LIST (scrolls together)
+            Column(
+              children: events.map((event) {
+                final title = event["title"] ?? "Untitled Event";
+                final desc = event["description"] ?? "";
+                final date = (event["eventDate"] as Timestamp).toDate();
+                final formatted = DateFormat(
+                  "dd MMM yyyy, hh:mm a",
+                ).format(date);
 
-                      final isUpcoming = _isUpcoming(eventDate);
-                      final statusColor = isUpcoming
-                          ? Colors.green
-                          : Colors.grey.shade700;
-                      final statusText = isUpcoming ? "Upcoming" : "Past Event";
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
 
-                      return Card(
-                        elevation: 2,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        color: _cardColor,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: _primaryLight.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _primaryLight.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.event,
-                              color: _primaryColor,
-                              size: 24,
-                            ),
+                      // ⭐ OPEN DAY_EVENTS PAGE HERE
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DayEventsPage(selectedDate: date),
                           ),
-                          title: Text(
-                            title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              color: _primaryDark,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 6),
-                              Row(
+                        );
+                      },
+
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.event, size: 40, color: primaryColor),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.access_time,
-                                    size: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
                                   Text(
-                                    formattedDate,
+                                    title,
                                     style: TextStyle(
-                                      color: Colors.grey[700],
-                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: dark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    formatted,
+                                    style: TextStyle(
+                                      color: dark
+                                          ? Colors.white70
+                                          : Colors.grey[700],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    desc,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: dark
+                                          ? Colors.white60
+                                          : Colors.grey[800],
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                description,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.grey[800],
-                                  fontSize: 14,
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: statusColor,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      isUpcoming
-                                          ? Icons.upcoming
-                                          : Icons.history,
-                                      size: 12,
-                                      color: statusColor,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      statusText,
-                                      style: TextStyle(
-                                        color: statusColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          trailing: Icon(
-                            Icons.chevron_right,
-                            color: _primaryLight,
-                            size: 20,
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    DayEventsPage(selectedDate: eventDate),
-                              ),
-                            );
-                          },
+                            ),
+                            const Icon(Icons.chevron_right, color: Colors.grey),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
-          ),
-        ],
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }

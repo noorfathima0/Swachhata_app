@@ -17,115 +17,124 @@ class _UserForumPageState extends State<UserForumPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Color scheme
-  final Color _primaryColor = Colors.teal;
-  final Color _primaryDark = const Color(0xFF00695C);
-  final Color _primaryLight = const Color(0xFF4DB6AC);
-  final Color _backgroundColor = const Color(0xFFF8F9FA);
-  final Color _cardColor = Colors.white;
+  // Stores current image index for each post (no rebuilding)
+  final Map<String, int> _currentIndex = {};
 
-  // Toggle Like functionality
-  Future<void> _toggleLike(String postId, List<dynamic> likes) async {
+  // Theme (Blue Modern)
+  final Color primaryColor = const Color(0xFF2196F3);
+  final Color primaryDark = const Color(0xFF1976D2);
+  final LinearGradient primaryGradient = const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+  );
+
+  // LIKE feature
+  Future<void> _toggleLike(String postId, List likes) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final postRef = _firestore.collection('posts').doc(postId);
+    final ref = _firestore.collection("posts").doc(postId);
 
-    if (likes.contains(user.uid)) {
-      await postRef.update({
-        'likes': FieldValue.arrayRemove([user.uid]),
-      });
-    } else {
-      await postRef.update({
-        'likes': FieldValue.arrayUnion([user.uid]),
-      });
-    }
+    await ref.update({
+      "likes": likes.contains(user.uid)
+          ? FieldValue.arrayRemove([user.uid])
+          : FieldValue.arrayUnion([user.uid]),
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = _auth.currentUser;
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Text(
-          loc.forum, // "Community Forum" localized
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: 20,
-          ),
+          loc.forum,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        centerTitle: true,
-        backgroundColor: _primaryColor,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(gradient: primaryGradient),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
+
+      // STREAM BUILDER
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('posts')
             .orderBy('createdAt', descending: true)
             .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
             return Center(
-              child: CircularProgressIndicator(color: _primaryColor),
+              child: CircularProgressIndicator(color: primaryColor),
             );
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snap.hasData || snap.data!.docs.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.forum_outlined, size: 64, color: _primaryLight),
+                  Icon(
+                    Icons.forum_rounded,
+                    size: 70,
+                    color: primaryColor.withOpacity(.4),
+                  ),
                   const SizedBox(height: 16),
                   Text(
-                    loc.noPosts, // localized "No posts yet"
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: _primaryDark,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    loc.noPosts,
+                    style: TextStyle(color: primaryDark, fontSize: 16),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     loc.beFirstToShare,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                 ],
               ),
             );
           }
 
-          final posts = snapshot.data!.docs;
+          final posts = snap.data!.docs;
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             itemCount: posts.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final post = posts[index];
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
+
+            itemBuilder: (context, i) {
+              final post = posts[i];
               final data = post.data() as Map<String, dynamic>;
 
-              final List<String> mediaUrls =
-                  (data['mediaUrls'] as List?)?.cast<String>() ?? [];
-              final List<dynamic> likes = data['likes'] is List
-                  ? data['likes'] as List<dynamic>
-                  : [];
-              final bool isLiked = user != null && likes.contains(user.uid);
-              final int commentCount = (data['commentsCount'] ?? 0) as int;
-              final String adminName = data['adminName'] ?? loc.user;
-              final String profileImageUrl = data['profileImageUrl'] ?? '';
-              final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-              final formattedDate = createdAt != null
-                  ? DateFormat('dd MMM, hh:mm a').format(createdAt)
+              final media = (data["mediaUrls"] as List?)?.cast<String>() ?? [];
+              final likes = data["likes"] ?? [];
+              final isLiked = user != null && likes.contains(user.uid);
+              final comments = data["commentsCount"] ?? 0;
+              final author = data["adminName"] ?? loc.user;
+              final profile = data["profileImageUrl"] ?? "";
+              final content = data["content"] ?? "";
+              final created = (data["createdAt"] as Timestamp?)?.toDate();
+              final date = created != null
+                  ? DateFormat("dd MMM, hh:mm a").format(created)
                   : loc.unknownDate;
-              final postContent = data['content'] ?? '';
 
+              // ✨ WRAP THE WHOLE CARD — open details anywhere
               return GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -135,49 +144,44 @@ class _UserForumPageState extends State<UserForumPage> {
                     ),
                   );
                 },
-                child: Card(
-                  elevation: 3,
-                  margin: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF2D2D2D)
+                          : Colors.grey.shade300,
+                    ),
+                    boxShadow: isDark
+                        ? []
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                   ),
-                  color: _cardColor,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header (Author info)
+                      // HEADER
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _primaryLight,
-                                border: Border.all(
-                                  color: _primaryColor.withOpacity(0.2),
-                                  width: 2,
-                                ),
-                              ),
-                              child: ClipOval(
-                                child: (profileImageUrl.isNotEmpty)
-                                    ? Image.network(
-                                        profileImageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: 22,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                        size: 22,
-                                      ),
-                              ),
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: primaryColor.withOpacity(.15),
+                              backgroundImage: profile.isNotEmpty
+                                  ? NetworkImage(profile)
+                                  : null,
+                              child: profile.isEmpty
+                                  ? Icon(Icons.person, color: primaryColor)
+                                  : null,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -185,19 +189,22 @@ class _UserForumPageState extends State<UserForumPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    adminName,
+                                    author,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 16,
-                                      color: _primaryDark,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
                                   Text(
-                                    formattedDate,
+                                    date,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey[600],
+                                      color: isDark
+                                          ? Colors.white60
+                                          : Colors.grey[600],
                                     ),
                                   ),
                                 ],
@@ -205,96 +212,84 @@ class _UserForumPageState extends State<UserForumPage> {
                             ),
                             Icon(
                               Icons.more_horiz,
-                              color: Colors.grey[400],
-                              size: 20,
+                              color: isDark ? Colors.white60 : Colors.grey,
                             ),
                           ],
                         ),
                       ),
 
-                      // Image carousel (if any)
-                      if (mediaUrls.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: CarouselSlider(
-                            options: CarouselOptions(
-                              height: 280,
-                              enlargeCenterPage: true,
-                              enableInfiniteScroll: false,
-                              viewportFraction: 1.0,
-                              autoPlay: mediaUrls.length > 1,
-                              autoPlayInterval: const Duration(seconds: 4),
-                            ),
-                            items: mediaUrls.map((url) {
-                              return Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                      // IMAGES
+                      if (media.isNotEmpty)
+                        Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: CarouselSlider(
+                                options: CarouselOptions(
+                                  height: 230,
+                                  viewportFraction: 1,
+                                  enableInfiniteScroll: false,
+                                  autoPlay: media.length > 1,
+                                  autoPlayInterval: const Duration(seconds: 4),
+                                  onPageChanged: (index, reason) {
+                                    _currentIndex[post.id] =
+                                        index; // No setState()
+                                  },
                                 ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    url,
+                                items: media.map((url) {
+                                  return Container(
                                     width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      height: 280,
-                                      color: _primaryLight.withOpacity(0.1),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.broken_image,
-                                            size: 50,
-                                            color: _primaryLight,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            loc.failedToLoadImage,
-                                            style: TextStyle(
-                                              color: _primaryDark,
-                                            ),
-                                          ),
-                                        ],
+                                    color: isDark
+                                        ? const Color(0xFF2D2D2D)
+                                        : Colors.white,
+                                    child: Image.network(
+                                      url,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          size: 50,
+                                          color: primaryColor,
+                                        ),
                                       ),
                                     ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            if (media.length > 1)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  '${(_currentIndex[post.id] ?? 0) + 1}/${media.length}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : Colors.grey[600],
                                   ),
                                 ),
-                              );
-                            }).toList(),
-                          ),
+                              ),
+                          ],
                         ),
 
-                      // Description / Content
-                      if (postContent.isNotEmpty)
+                      // CONTENT
+                      if (content.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
+                          padding: const EdgeInsets.all(16),
                           child: Text(
-                            postContent,
+                            content,
                             style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black87,
                               fontSize: 15,
-                              height: 1.5,
-                              color: Colors.grey[800],
+                              height: 1.45,
                             ),
-                            maxLines: 4,
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
 
-                      // Like & Comment Buttons
+                      // ACTION BUTTONS (Like / Comment)
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -302,92 +297,108 @@ class _UserForumPageState extends State<UserForumPage> {
                         ),
                         child: Row(
                           children: [
-                            // Like Button
-                            Container(
-                              decoration: BoxDecoration(
-                                color: isLiked
-                                    ? Colors.red.withOpacity(0.1)
-                                    : Colors.grey.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      isLiked
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
+                            // ❤️ LIKE BUTTON (tap does NOT trigger parent)
+                            Expanded(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _toggleLike(post.id, likes),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
                                       color: isLiked
-                                          ? Colors.red
-                                          : Colors.grey[600],
-                                      size: 20,
+                                          ? Colors.red.withOpacity(.1)
+                                          : Colors.grey.withOpacity(.15),
                                     ),
-                                    onPressed: user == null
-                                        ? null
-                                        : () => _toggleLike(post.id, likes),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: Text(
-                                      "${likes.length}",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        color: isLiked
-                                            ? Colors.red
-                                            : Colors.grey[700],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Comment Button
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.chat_bubble_outline,
-                                      color: _primaryColor,
-                                      size: 20,
-                                    ),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PostDetailPage(
-                                            postId: post.id,
-                                            postData: data,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          isLiked
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: isLiked
+                                              ? Colors.red
+                                              : Colors.grey[700],
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${likes.length}',
+                                          style: TextStyle(
+                                            color: isLiked
+                                                ? Colors.red
+                                                : Colors.grey[800],
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: Text(
-                                      "$commentCount",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        color: _primaryDark,
-                                      ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            // 💬 COMMENT BUTTON
+                            Expanded(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PostDetailPage(
+                                          postId: post.id,
+                                          postData: data,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      color: Colors.grey.withOpacity(.15),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.chat_bubble_outline,
+                                          color: primaryColor,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '$comments',
+                                          style: TextStyle(
+                                            color: primaryDark,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
